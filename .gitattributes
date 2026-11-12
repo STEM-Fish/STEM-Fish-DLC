@@ -1,0 +1,8 @@
+# 统一换行：源码/文本用 LF，Windows 批处理/脚本也强制 LF（Git Bash 执行）
+* text=auto
+*.sh text eol=lf
+*.cs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.csproj text eol=lf
+*.png binary

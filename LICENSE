@@ -1,0 +1,58 @@
+MIT License + Commons Clause
+
+Copyright (c) 2026 STEM-Fish
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+Commons Clause License Condition v1.0
+================================================================================
+
+The Software is provided to you by the Licensor under the License, as defined
+below, subject to the following condition.
+
+Without limiting other conditions in the License, the grant of rights under
+the License will not include, and the License does not grant to you, the right
+to Sell the Software.
+
+For purposes of the foregoing, "Sell" means practicing any or all of the
+rights granted to you under the License to provide to third parties, for a fee
+or other consideration (including without limitation fees for hosting or
+consulting/support services related to the Software), a product or service
+whose value derives, entirely or substantially, from the functionality of the
+Software. Any license notice or attribution required by the License must also
+include this Commons Clause License Condition notice.
+
+Software: STEM Fish DLC (Casualties: Unknown mod)
+License: MIT
+Licensor: STEM-Fish
+
+================================================================================
+关于美术资源 / About bundled assets
+================================================================================
+
+1. 本仓库中由本项目作者绘制的贴图、立绘、图标、皮肤包与文本（下称"原创素材"）
+   同样适用上面的 MIT + Commons Clause：可以自由使用、修改、转载，
+   但**不得用于商业用途**，且必须保留出处。
+
+2. `Casualties: Unknown` 本身的游戏素材（原版贴图、音频、程序集等）
+   版权归 Orsoniks 所有。本仓库**不包含**游戏程序集；为兼容性保留的少量
+   原版 UI 占位图仅用于 MOD 运行，版权仍归原作者，若权利人要求会立即移除。
+
+3. 本项目与 Orsoniks 无关，是玩家自制内容（非官方）。

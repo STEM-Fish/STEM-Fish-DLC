@@ -1,0 +1,50 @@
+# ============================================================================
+#  STEM Fish DLC — 仓库忽略项
+#  原则：只提交「源码 + 需要人改的资源」，构建产物 / 游戏程序集 / 参考导出图都不进仓库
+# ============================================================================
+
+# ---- 构建产物 ----
+**/bin/
+**/obj/
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+
+# 例外：仓库里没有任何需要提交的 dll；如果以后要放第三方依赖，用 !xxx.dll 单独放行
+
+# ---- 部署 / 打包 ----
+dist/
+release/
+*.zip
+*.7z
+
+# ---- 本机配置 / 备份 ----
+_backup_*/
+*.bak
+*.orig
+*.before_*
+*~
+*.log
+BepInEx/
+LogOutput.log
+
+# ---- 从游戏里导出的参考素材（版权属于 Orsoniks，不要公开） ----
+STEMFishDLC/skin/**/_reference/
+STEMFishDLC/textures_raw/
+STEMFishDLC/textures_raw_mdr/
+
+# ---- 与本仓库无关的其它工程 / 临时目录 ----
+CU_ServerPilot/
+STEM_Fish_MOD/
+tools/
+release_v0.10.*/
+CU_ServerPilot_v0.10.*.zip
+.workbuddy/
+.vs/
+.idea/
+
+# ---- 内部设计文档（剧情大纲 / 逆向规划，暂不公开） ----
+STEMFishDLC/PLAN.md
+STEMFishDLC/LORE_BRIEF.md
+*.disabled

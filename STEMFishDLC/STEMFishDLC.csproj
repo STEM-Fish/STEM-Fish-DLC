@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      STEM Fish DLC - Casualties Unknown 剧情 DLC（BepInEx 5 插件）
+      定位: 以皮肤包 EXP_STEMFISH 为主角的玩法扩展（角色被动 / 装备 / 剧情 / 自言自语）
+      游戏: Unity 2022.3 Mono + BepInEx 5.4.23.x
+    -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>STEMFishDLC</AssemblyName>
+    <Product>STEM Fish DLC</Product>
+    <Version>0.18.10</Version>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>STEMFishDLC</RootNamespace>
+
+    <!--
+      游戏目录。默认正式版；装在别处用 -p:GameDir= 覆盖：
+        dotnet build -c Release -p:GameDir="D:\Steam\steamapps\common\Casualties Unknown"
+    -->
+    <GameDir Condition="'$(GameDir)' == ''">D:/Steam/steamapps/common/Casualties Unknown</GameDir>
+
+    <RestoreAdditionalProjectSources>
+      https://api.nuget.org/v3/index.json;
+      https://nuget.bepinex.dev/v3/index.json;
+      https://nuget.samboy.dev/v3/index.json
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Unity 引擎模块（编译期引用，不随插件分发） -->
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.*" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BepInEx 5 运行时（游戏自带，不复制） -->
+    <Reference Include="BepInEx">
+      <HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDir)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- 游戏主程序集（patch Body/Talker/Locale/Item 等） -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameDir)\CasualtiesUnknown_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- URP 2D 光照：Light2D（枪口/命中要真正照亮环境，Sprite 做不到） -->
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime">
+      <HintPath>$(GameDir)\CasualtiesUnknown_Data\Managed\Unity.RenderPipelines.Universal.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- uGUI（游戏内面板 UI） -->
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(GameDir)\CasualtiesUnknown_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- TextMeshPro（游戏文字组件） -->
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(GameDir)\CasualtiesUnknown_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- 配置/台词 JSON 解析 -->
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GameDir)\CasualtiesUnknown_Data\Managed\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

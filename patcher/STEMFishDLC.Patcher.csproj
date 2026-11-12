@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- BepInEx 5 预加载器插件：编译产物放到 BepInEx/patchers/ -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>STEMFishDLC.Patcher</AssemblyName>
+    <RootNamespace>STEMFishDLC.Patcher</RootNamespace>
+    <Version>0.12.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+
+    <!-- 游戏目录，默认正式版 -->
+    <GameDir Condition="'$(GameDir)' == ''">D:\Steam\steamapps\common\Casualties Unknown</GameDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 只为满足 BepInEx 的 patcher 契约（Patch(AssemblyDefinition)）；不随包发布 -->
+    <Reference Include="Mono.Cecil">
+      <HintPath>$(GameDir)\BepInEx\core\Mono.Cecil.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,154 @@
+{
+  "Blood/BloodParticle": [
+    32,
+    32
+  ],
+  "Blood/limbBlood": [
+    128,
+    128
+  ],
+  "Body/experimentCrus": [
+    6,
+    10
+  ],
+  "Body/experimentDownArm": [
+    6,
+    16
+  ],
+  "Body/experimentDownTorso": [
+    10,
+    12
+  ],
+  "Body/experimentFoot": [
+    8,
+    15
+  ],
+  "Body/experimentHandB": [
+    8,
+    6
+  ],
+  "Body/experimentHandF": [
+    8,
+    6
+  ],
+  "Body/experimentTail": [
+    54,
+    22
+  ],
+  "Body/experimentThigh": [
+    8,
+    13
+  ],
+  "Body/experimentUpArm": [
+    6,
+    14
+  ],
+  "Body/experimentUpTorso": [
+    10,
+    12
+  ],
+  "Head/experimentEyeClosed": [
+    26,
+    12
+  ],
+  "Head/experimentEyeGone": [
+    26,
+    12
+  ],
+  "Head/experimentEyeGoneHealed": [
+    26,
+    12
+  ],
+  "Head/experimentEyeHalfClosed": [
+    26,
+    12
+  ],
+  "Head/experimentEyeHalfClosedBack": [
+    26,
+    12
+  ],
+  "Head/experimentEyeHappy": [
+    26,
+    12
+  ],
+  "Head/experimentEyeLockedIn": [
+    26,
+    12
+  ],
+  "Head/experimentEyeLockedInBack": [
+    26,
+    12
+  ],
+  "Head/experimentEyeLookBack": [
+    26,
+    12
+  ],
+  "Head/experimentEyeOpen": [
+    26,
+    12
+  ],
+  "Head/experimentEyePanic": [
+    26,
+    12
+  ],
+  "Head/experimentEyeSad": [
+    26,
+    12
+  ],
+  "Head/experimentEyeSadBack": [
+    26,
+    12
+  ],
+  "Head/experimentEyeScared": [
+    26,
+    12
+  ],
+  "Head/experimentEyeScaredBack": [
+    26,
+    12
+  ],
+  "Head/experimentHead": [
+    28,
+    16
+  ],
+  "Head/experimentHeadBack": [
+    28,
+    16
+  ],
+  "Head/experimentHeadBackMouth": [
+    28,
+    16
+  ],
+  "Head/experimentHeadBackMouthMini": [
+    28,
+    16
+  ],
+  "Head/experimentHeadDisfigured1": [
+    28,
+    16
+  ],
+  "Head/experimentHeadDisfigured1Healed": [
+    28,
+    16
+  ],
+  "Head/experimentHeadDisfigured2": [
+    28,
+    16
+  ],
+  "Head/experimentHeadDisfigured2Healed": [
+    28,
+    16
+  ],
+  "Head/experimentHeadDisfigured3": [
+    28,
+    16
+  ],
+  "Head/experimentHeadDisfigured3Healed": [
+    28,
+    16
+  ],
+  "Head/experimentNosebleed": [
+    14,
+    12
+  ]
+}
