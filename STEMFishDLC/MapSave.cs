@@ -22,6 +22,14 @@ namespace STEMFishDLC;
 //    读档时先只把它读进内存，等新世界生成完毕（`timeSinceFinishedGeneration > 0`
 //    + `body` 已就位）再把方块表整份写回，并按 CHUNKSIZE 分块 `SetTiles` 批量刷新。
 //
+//  ★ 层号要"掰回来"（v0.18.12 修）：
+//    原版 `SaveSystem.SaveGame` 写的是 `biome = biomeDepth + 1`，
+//    而 `SaveSystem.TryLoadGame` 读回来是 `biomeDepth = biome` —— **整整差一层**。
+//    原版是"进层式"存档（存档点=本层到底，读档=直接进下一层），所以官方没觉得错；
+//    我们要的是"原地续玩"，就必须在 TryLoadGame 之后把层号改回我们记的那一层，
+//    否则读第 11 层的档会掉进第 12 层（= 实验室结局层，`Body.PlaceBody` 里
+//    `biomeDepth == 11` → ENDLABSPAWN）。
+//
 //  为什么用批量 SetTiles 而不是逐格 SetBlock：
 //    逐格 `UpdateTile` 每格都 `Tilemap.SetTile` 一次，几十万格会卡好几秒；
 //    分块批量提交只有 chunkWidth×chunkHeight 次调用。
@@ -44,6 +52,7 @@ public static class MapSave
     private static float _preparedAt = -1f;
     private static WorldGeneration _preparedWorld;   // 记录"读档前"的世界实例，换了实例才应用
     private static bool _appliedLogged;
+    private static bool _patched;
 
     public static void Init(Plugin plugin)
     {
@@ -53,9 +62,99 @@ public static class MapSave
                 "存档时一并保存本层地图与角色坐标（关掉 = 回到原版行为，读档后地图重新随机）").Value;
         }
         catch { }
+
+        PatchTryLoadGame();
+    }
+
+    // ======================================================================
+    //  读档层号修正：TryLoadGame 之后把 biomeDepth 掰回存档时那一层
+    // ----------------------------------------------------------------------
+    //  原版把层号写成 biome = depth + 1，读回来直接 depth = biome → 深一层。
+    //  我们这个 hook 只对"有地图存档（.map）的槽位"生效：
+    //    ① 没有 .map 的旧档 → 完全走原版逻辑，不赌
+    //    ② 有 .map → 层号 = .map 里记的那一层，后面 Tick 才能把方块写回去
+    // ======================================================================
+    private static void PatchTryLoadGame()
+    {
+        if (_patched) return;
+        try
+        {
+            var m = AccessTools.Method(typeof(SaveSystem), "TryLoadGame", Type.EmptyTypes);
+            if (m == null)
+            {
+                Plugin.Log.LogWarning("[STEMFishDLC] 找不到 SaveSystem.TryLoadGame，读档层号不会修正");
+                return;
+            }
+            var post = typeof(MapSave).GetMethod("TryLoadGame_Postfix", BindingFlags.NonPublic | BindingFlags.Static);
+            new Harmony("com.stemfish.dlc.mapsave").Patch(m, postfix: new HarmonyMethod(post));
+            var info = Harmony.GetPatchInfo(m);
+            _patched = true;
+            Plugin.Log.LogInfo($"[STEMFishDLC] 读档层号修正 hook 完成 | postfix={info?.Postfixes?.Count ?? -1}");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] 读档层号修正 hook 失败: {e.Message}");
+        }
+    }
+
+    private static void TryLoadGame_Postfix()
+    {
+        if (!Enabled || !_pending || _blocks == null) return;   // 没有地图存档：不动原版行为
+        try
+        {
+            var w = WorldGeneration.world;
+            if (w == null) return;
+
+            int cur = w.biomeDepth;
+            if (cur == _depth) return;
+
+            // 只有"读档读到我们这一层附近"才掰（±1 是原版的进位；夹到 1 的极端情况差得更远，
+            // 但只要 .map 存在就说明这是我们的档，照样掰回去）
+            w.biomeDepth = _depth;
+            Plugin.Log.LogInfo($"[STEMFishDLC] 读档层号修正：{cur} → {_depth}（原版 biome=depth+1 的进位）");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] 读档层号修正失败: {e.Message}");
+        }
     }
 
     public static string PathFor(string id) => Path.Combine(SaveSlots.Root, id + ".map");
+
+    // ======================================================================
+    //  只读层号（给存档列表显示用）
+    //  ----------------------------------------------------------------------
+    //  存档列表以前是拿 save.sv 里的 `biome - 1` 当层号，但原版在最后一层存档时
+    //  会把 biome 夹成 1（`if (biome >= amountOfLayers) biome = 1`），列表就会显示第 1 层。
+    //  我们自己记的层号在 .map 头里，读几十个字节就够。
+    // ======================================================================
+    public static int ReadDepth(string id) => ReadDepth(id, out _);
+
+    public static int ReadDepth(string id, out bool ok)
+    {
+        ok = false;
+        if (string.IsNullOrEmpty(id)) return -1;
+
+        string path = PathFor(id);
+        if (!File.Exists(path)) return -1;
+
+        try
+        {
+            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+            using (var gz = new GZipStream(fs, CompressionMode.Decompress))
+            using (var br = new BinaryReader(gz))
+            {
+                if (br.ReadString() != Magic) return -1;
+                if (br.ReadInt32() != Version) return -1;
+                br.ReadInt32();                      // width
+                br.ReadInt32();                      // height
+                int depth = br.ReadInt32();
+                ok = true;
+                return depth;
+            }
+        }
+        catch { return -1; }
+    }
 
     // ======================================================================
     //  存
@@ -119,6 +218,7 @@ public static class MapSave
         _preparedAt = -1f;
         _appliedLogged = false;
         _preparedWorld = null;
+        _verifyAt = -1f;
 
         if (!Enabled || string.IsNullOrEmpty(id)) return;
 
@@ -175,6 +275,49 @@ public static class MapSave
     {
         _pending = false;
         _blocks = null;
+        _verifyAt = -1f;
+    }
+
+    // ======================================================================
+    //  传送复核
+    //  ----------------------------------------------------------------------
+    //  原版 `WorldPlacePlayer` 也是"世界生成完之后"才把人物摆到出生点，
+    //  万一它比我们晚一帧，传送就会被它盖掉（人站在出生点，地图却是存档的）。
+    //  所以写回方块 1 秒后再看一次：人离目标点超过 8 格就补一次传送。
+    // ======================================================================
+    private static void VerifyTeleport()
+    {
+        if (_verifyAt <= 0f) return;
+        if (Time.realtimeSinceStartup < _verifyAt) return;
+        _verifyAt = -1f;
+
+        try
+        {
+            var body = PlayerCamera.main != null ? PlayerCamera.main.body : null;
+            if (body == null) return;
+
+            var pos = (Vector2)body.transform.position;
+            if (Vector2.Distance(pos, _verifyPos) <= 8f) return;
+
+            var rb = body.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.velocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+                rb.position = _verifyPos;
+            }
+            body.transform.position = new Vector3(_verifyPos.x, _verifyPos.y, body.transform.position.z);
+            try
+            {
+                var cam = PlayerCamera.main.transform;
+                cam.position = new Vector3(_verifyPos.x, _verifyPos.y, cam.position.z);
+            }
+            catch { }
+
+            Plugin.Log.LogInfo($"[STEMFishDLC] 传送复核：出生点把人挪走了（{pos.x:0},{pos.y:0}），已拉回 " +
+                               $"({_verifyPos.x:0},{_verifyPos.y:0})");
+        }
+        catch { }
     }
 
     // ======================================================================
@@ -182,15 +325,9 @@ public static class MapSave
     // ======================================================================
     public static void Tick()
     {
-        if (!_pending || _blocks == null) return;
+        VerifyTeleport();
 
-        // 兜底：超过 3 分钟还没等到世界就绪就放弃，避免哪天误应用到别的局上
-        if (_preparedAt > 0f && Time.realtimeSinceStartup - _preparedAt > 180f)
-        {
-            Plugin.Log.LogWarning("[STEMFishDLC] 地图存档等待超时，已放弃写回（其余功能不受影响）");
-            Cancel();
-            return;
-        }
+        if (!_pending || _blocks == null) return;
 
         // 兜底：超过 3 分钟还没等到世界就绪就放弃，避免哪天误应用到别的局上
         if (_preparedAt > 0f && Time.realtimeSinceStartup - _preparedAt > 180f)
@@ -312,6 +449,10 @@ public static class MapSave
                 Plugin.Log.LogInfo($"[STEMFishDLC] 地图已还原：{width}×{height} · {chunksDrawn} 个区块 · " +
                                    $"角色 → ({p.x:0},{p.y:0})");
             }
+
+            // ④ 1 秒后复核位置（原版的出生点摆放可能比我们晚一点）
+            _verifyPos = p;
+            _verifyAt = Time.realtimeSinceStartup + 1f;
         }
         catch (Exception e)
         {
@@ -389,6 +530,10 @@ public static class MapSave
     }
 
     private static FieldInfo _fInstantiating;
+
+    // 传送复核（见 VerifyTeleport）
+    private static float _verifyAt = -1f;
+    private static Vector2 _verifyPos;
 
     private static bool _warned;
     private static void WarnOnce(string msg)

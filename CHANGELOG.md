@@ -2,15 +2,20 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
-## 0.18.11 — 2026-11-13
+## 0.18.12 — 2026-11-13
 
-- **存档现在会保存地图和角色坐标**：新增 `<槽位>.map`（gzip 的整层方块表 + 坐标），
-  读档时等新世界生成完毕后整份写回并按 CHUNK 批量刷新，再把角色传送到存档位置。
-  原版存档格式没动，`[Save] SaveMap` 可以关掉
-- **物品文本表修好了**：UI 读的是 `ItemInfo.fullName / description`，以前只塞了 Locale，
-  所以改 `items.zh-CN.json` 游戏里看不到；现在注册时就把 json 文本写进 ItemInfo
-- 刷怪密度整体上调（2.2/1.7/1.4/3.0/1.6 → 2.6/2.0/1.65/3.5/1.9）
-- 弹药箱每层 14 → 17（老 cfg 一次性迁移）
+- **修：读档会往下跳一层（第 11 层存档读进去直接到结局层）**
+  反汇编确认原版 `SaveGame` 写的是 `biome = biomeDepth + 1`，`TryLoadGame` 读回来是
+  `biomeDepth = biome`，整整差一层。原版是"进层式"存档（存档点=本层到底，读档=进下一层），
+  我们是"原地续玩"，所以现在在 `TryLoadGame` 之后把层号掰回 `.map` 里记的那一层。
+  `biomeDepth == 11` 在 `Body.PlaceBody` 里就是 `ENDLABSPAWN`（实验室结局层），
+  这就是之前读档被直接丢进结局的原因
+- **新增：结局 / 过场插画替换接口**（`Image.sprite` + `SpriteRenderer.sprite` 双钩子），
+  皮肤包里新增 `Ending/` 目录，按 sprite 名匹配，画好同名 PNG 放进去即生效
+- **原版结局贴图整套导出**到 `Ending/_reference/`（13 张过场 + 7 张科学家），
+  并反查出 `cutsceneImages[]` 的真实索引表，写在 `Ending/README.txt` 和主 README
+  → **结局有关的美术资源替换仍未完工**（只有参考图，没有生效的新图）
+- 传送复核：写回地图 1 秒后再检查一次，若被原版 `WorldPlacePlayer` 摆回出生点就补一次传送
 
 ## 0.18.11 — 2026-11-13
 

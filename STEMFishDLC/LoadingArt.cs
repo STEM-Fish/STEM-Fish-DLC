@@ -28,9 +28,14 @@ namespace STEMFishDLC;
 //         从根上不打架（和 KrokMP 改 `TMP_Text.text` 是同一个套路，已验证可行）。
 //
 //  PNG 文件名 = 场景对象名 或 sprite 名（两种都认），放在
-//    plugins/CustomSprites/<包名>/Loading/
+//    plugins/CustomSprites/<包名>/Loading/    主菜单 / 生成界面立绘
+//    plugins/CustomSprites/<包名>/Ending/     结局过场插画 + 实验室科学家
 //  导出的原图已经**按原版画布尺寸**铺好了（角色在画布里的位置 = 游戏里的位置），
 //  照着画就能 1:1 对上。
+//
+//  ★ v0.18.12 起多挂一个 `SpriteRenderer.sprite` 的 setter 前缀：
+//    结局过场是 UGUI Image，但实验室那位科学家（`scientist` / `endsc1~4`）是
+//    世界里的 SpriteRenderer，只挂 Image 那边管不到。
 // ============================================================================
 public static class LoadingArt
 {
@@ -47,11 +52,14 @@ public static class LoadingArt
 
     private static bool _loaded;
     private static bool _patched;
+    private static bool _srPatched;
     private static int _frames;
     private static float _scanTimer;
     private static string _lastError;
 
     public static string Dir => Path.Combine(FishSkin.PackDir, "Loading");
+    // 结局/过场插画（世界里的 SpriteRenderer 与全屏 Image 都认）
+    public static string EndingDir => Path.Combine(FishSkin.PackDir, "Ending");
     public static int SpriteCount => _tex.Count;
 
     public static void Init(Plugin plugin)
@@ -66,7 +74,11 @@ public static class LoadingArt
         if (!Enabled) { Plugin.Log.LogInfo("[STEMFishDLC] 加载界面立绘替换：关闭"); return; }
 
         Load();
-        if (_tex.Count > 0) PatchImageSetter();
+        if (_tex.Count > 0)
+        {
+            PatchImageSetter();
+            PatchSpriteRendererSetter();
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -78,18 +90,26 @@ public static class LoadingArt
         _tex.Clear();
         _spriteCache.Clear();
 
+        int fromLoading = LoadDir(Dir, "加载界面立绘");
+        int fromEnding = LoadDir(EndingDir, "结局/过场插画");
+
+        if (_tex.Count > 0)
+            Plugin.Log.LogInfo($"[STEMFishDLC] 立绘已载入 {_tex.Count} 张" +
+                               $"（Loading {fromLoading} / Ending {fromEnding}）：{string.Join(", ", _tex.Keys)}");
+    }
+
+    private static int LoadDir(string dir, string label)
+    {
+        int n = 0;
         try
         {
-            if (!Directory.Exists(Dir))
-            {
-                Plugin.Log.LogInfo($"[STEMFishDLC] 加载界面立绘：{Dir} 不存在（不替换）");
-                return;
-            }
+            if (!Directory.Exists(dir)) return 0;
 
-            foreach (var png in Directory.GetFiles(Dir, "*.png"))
+            foreach (var png in Directory.GetFiles(dir, "*.png"))
             {
                 var name = Path.GetFileNameWithoutExtension(png);
                 if (name.EndsWith("~", StringComparison.Ordinal)) continue;
+                if (_tex.ContainsKey(name)) continue;      // Loading 优先，重名不覆盖
 
                 try
                 {
@@ -103,20 +123,19 @@ public static class LoadingArt
                     tex.wrapMode = TextureWrapMode.Clamp;
                     tex.name = name;
                     _tex[name] = tex;
+                    n++;
                 }
                 catch (Exception e)
                 {
-                    Plugin.Log.LogWarning($"[STEMFishDLC] 立绘载入失败 {name}: {e.Message}");
+                    Plugin.Log.LogWarning($"[STEMFishDLC] {label}载入失败 {name}: {e.Message}");
                 }
             }
         }
         catch (Exception e)
         {
-            Plugin.Log.LogWarning($"[STEMFishDLC] 立绘目录读取失败: {e.Message}");
+            Plugin.Log.LogWarning($"[STEMFishDLC] {label}目录读取失败（{dir}）: {e.Message}");
         }
-
-        if (_tex.Count > 0)
-            Plugin.Log.LogInfo($"[STEMFishDLC] 加载界面立绘已载入 {_tex.Count} 张：{string.Join(", ", _tex.Keys)}");
+        return n;
     }
 
     // ---------------------------------------------------------------------
@@ -144,6 +163,58 @@ public static class LoadingArt
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] Image.sprite 钩子失败: {e.Message}");
         }
+    }
+
+    // ---------------------------------------------------------------------
+    //  世界里的 SpriteRenderer 也要认（实验室科学家 scientist / endsc 立绘、
+    //  结局里偶尔用 SpriteRenderer 摆的角色）—— 不然只有 UGUI 那边生效
+    // ---------------------------------------------------------------------
+    private static void PatchSpriteRendererSetter()
+    {
+        if (_srPatched) return;
+        try
+        {
+            var setter = AccessTools.PropertySetter(typeof(SpriteRenderer), "sprite");
+            if (setter == null)
+            {
+                Plugin.Log.LogWarning("[STEMFishDLC] 找不到 SpriteRenderer.sprite 的 setter");
+                return;
+            }
+            var pre = typeof(LoadingArt).GetMethod("Renderer_Prefix", BindingFlags.NonPublic | BindingFlags.Static);
+            new Harmony("com.stemfish.dlc.endart").Patch(setter, prefix: new HarmonyMethod(pre));
+
+            var info = Harmony.GetPatchInfo(setter);
+            _srPatched = true;
+            Plugin.Log.LogInfo($"[STEMFishDLC] SpriteRenderer.sprite 钩子完成 | prefix={info?.Prefixes?.Count ?? -1}");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] SpriteRenderer.sprite 钩子失败: {e.Message}");
+        }
+    }
+
+    private static void Renderer_Prefix(SpriteRenderer __instance, ref Sprite value)
+    {
+        if (!Enabled || value == null || __instance == null) return;
+        if (_ours.Contains(value.GetInstanceID())) return;
+        try
+        {
+            var go = __instance.gameObject;
+            string key = null;
+            if (_tex.ContainsKey(value.name)) key = value.name;
+            else if (go != null && _tex.ContainsKey(go.name)) key = go.name;
+            else if (_tex.ContainsKey(value.name + "alt")) key = value.name + "alt";
+            if (key == null) return;
+
+            var sp = GetSprite(key, value);
+            if (sp == null) return;
+
+            string tag = "R:" + (go != null ? go.name : "?") + "→" + key;
+            if (_logged2.Add(tag))
+                Plugin.Log.LogInfo($"[STEMFishDLC] 立绘替换生效（世界）：{tag}");
+            value = sp;
+        }
+        catch { }
     }
 
     private static void Sprite_Prefix(Image __instance, ref Sprite value)

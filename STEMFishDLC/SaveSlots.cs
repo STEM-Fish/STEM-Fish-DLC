@@ -372,6 +372,12 @@ public static class SaveSlots
                 var items = jo["items"] as JArray;
                 s.itemCount = items != null ? items.Count : 0;
             }
+
+            // ★ .map 头里记的层号最准（原版在最后一层会把 biome 夹成 1，列表会显示成第 1 层）
+            bool ok;
+            int mapDepth = MapSave.ReadDepth(s.id, out ok);
+            if (ok && mapDepth >= 0) s.depth = mapDepth;
+            // 旧存档（没有 .map，meta 也没写过层号）就只能用 biome-1
         }
         catch (Exception e)
         {

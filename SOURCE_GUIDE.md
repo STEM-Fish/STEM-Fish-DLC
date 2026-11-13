@@ -230,12 +230,42 @@ baseSizes.json     各部位基准尺寸
 Body/              躯干、四肢、尾巴 + 同名 .txt（锚点）
 Head/              头、后脑、各种眼睛、毁容状态
 Blood/             血粒子、肢体血
+Loading/           主菜单 / 生成界面的 UGUI 立绘（PNG 名 = 对象名或 sprite 名）
+Ending/            结局过场 + 实验室科学家（PNG 名 = sprite 名，🚧 目前只有 _reference/）
 ```
+
+> `Loading/` 与 `Ending/` 共用 `LoadingArt` 这套加载器，两处都挂
+> `Image.sprite` **和** `SpriteRenderer.sprite` 的 setter 前缀 → 谁赋值都当场换掉，
+> 不和原版逐帧动画抢图。`Ending/` 的完整索引表见该目录下的 `README.txt`。
 
 包名在 cfg 的 `[Skin] PackName`。要换整套皮肤，复制一份改名再指过去。
 
 源码包里也有一份：`STEMFishDLC/skin/EXP_STEMFISH_DLC/`，`deploy.sh` 会把它同步到
 `plugins/CustomSprites/`。改皮肤时改源码里那份就不会丢。
+
+#### 结局过场贴图表（反汇编 + 场景 PPtr 双重确认）
+
+`WorldGeneration.cutsceneImages[13]`，索引顺序不能猜，是拿 level1 场景里
+`World` 组件的 MonoBehaviour 原始字节按 12 字节 PPtr 逐个解析出来的：
+
+| idx | sprite | 用途 |
+|---|---|---|
+| 0–2 | `char1endcargo` / `char2endcargo` / `char3endcargo` | v1.0 未被引用（遗留素材） |
+| 3–5 | `char1end` / `char2end` / `char3end` | `cutsceneImages[body.charType + 3]`：逃脱 / 地表突破时站在地表的角色 |
+| 6 | `surface` | `SurfaceBreachCutscene` 底图 |
+| 7 | `lab` | `BiopodEnding` / `Alt` / `Alt2` 底图 |
+| 8 | `earth` | `EscapeEnding` 第一幕 |
+| 9 | `surfacemerc` | `MercEnding` 第一幕 |
+| 10 | `mercend` | v1.0 未被引用（遗留素材） |
+| 11 | `merccombined` | `MercEnding` 第二幕 |
+| 12 | `earthend` | `EscapeEnding` 定格 |
+
+> 读这个数组踩过的坑：用 UnityPy + TypeTree 生成的树去读 `WorldGeneration`
+> 会 `read_str out of bounds`（字段对齐错），读出来的值全是垃圾；
+> 只有"直接按 `(int fileID, long pathID)` 在原始字节里按 12 字节步长扫"才可靠。
+> `PlayerCamera.deathScreenSprites`（死亡结算 3 张）至今没定位到（不在 level1 的
+> Main Camera 里），真要替换用运行时 dump 更省事。
+
 
 ### 4.4 档案配图
 
@@ -378,11 +408,15 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 | 往 `runSettings` 塞 int 直接崩 | `GetRunSettingFloat` 是 `unbox.any Single`，类型必须一致 |
 | 光照怎么调都像亮斑 | `falloffIntensity` 越大越柔，之前一路往下压是反的 |
 | 容器装不进东西 | `Container.LoadItem` 失败是**静默 return**，且要求物品与容器距离 < 10 |
+| 读档后往下跳一层（第 11 层存档读进结局层） | 原版 `SaveGame` 写 `biome = biomeDepth + 1`，`TryLoadGame` 读回来直接 `biomeDepth = biome`，差一层。原版是"进层式"存档所以不觉得错；我们在 `TryLoadGame` 后置里把层号掰回 `.map` 记的值 |
+| `biomeDepth == 11` 就进实验室结局 | `Body.PlaceBody()` 里 `biomeDepth == 11` → `ENDLABSPAWN`；`== 10` 是"最后一层从底部往上找地面"，其余层从顶部往下找 |
+| 原版在最后一层存档会把 biome 夹成 1 | `SaveGame`：`if (biome >= amountOfLayers) biome = 1`。所以列表层号不能只信 `save.sv`，要读我们 `.map` 头里的深度 |
+| UnityPy + TypeTree 读 `WorldGeneration` 全是垃圾 | 生成的树字段对齐不对（`read_str out of bounds`）。要么原始字节扫 PPtr，要么运行时 dump |
 
 ---
 
 ## 8. 版本
 
-当前 **v0.13.9**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，改的时候一起改。
+当前 **v0.18.12**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
 
 主要里程碑见 `.workbuddy/memory/` 下的日志。
