@@ -196,6 +196,7 @@ public static class LoadingArt
     private static void Renderer_Prefix(SpriteRenderer __instance, ref Sprite value)
     {
         if (!Enabled || value == null || __instance == null) return;
+        if (_tex.Count == 0) return;                            // 世界里的 SpriteRenderer 赋值非常频繁
         if (_ours.Contains(value.GetInstanceID())) return;
         try
         {
@@ -220,6 +221,7 @@ public static class LoadingArt
     private static void Sprite_Prefix(Image __instance, ref Sprite value)
     {
         if (!Enabled || value == null || __instance == null) return;
+        if (_tex.Count == 0) return;                            // 没素材：直接放行（零开销快路径）
         if (_ours.Contains(value.GetInstanceID())) return;      // 已经是我们的图，别再套一层
         try
         {
