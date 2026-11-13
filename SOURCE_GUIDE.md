@@ -178,7 +178,7 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 | `HypeMode.cs` | 「急速下坠」的娱乐加成：击杀敌对生物 +心情、命中特效放大 | 敌人是 `BuildingEntity` 不是 `Body`，判定点 `health < 0.5` |
 | `Mechanics.cs` | 游泳强化 / 击杀同类心情惩罚 / 血袋败血症 / 摔落减免 / 容器诊断 / **F2 解除禁足**（游泳补丁只对玩家 Body 生效，避免串体把 maxSpeed 写成 0） | |
 | `MenuArt.cs` | 主菜单 Experiment 立绘的配套美术：用新图 alpha 现场生成白色悬停轮廓（半分辨率膨胀），写进 `MenuExperimentBlink.outlineSprites[]` + `outline.sprite`；文字/点击框按新造型 alpha 包围盒重摆（原版关系：文字=角色中心+120、顶部+43，点击框=中心+132）。`[Skin] MenuAutoLayout` / `MenuOutlineRadius` / `MenuTextOffsetX/Y` | **轮廓在 `MenuExperimentBlink` 里**（`outlineSprites` / `outline`），别按类型名过滤掉带 `Blink` 的组件；生成的 sprite 名不能和皮肤包 PNG 同名，否则被 LoadingArt 换回主立绘 |
-| `BloodRed.cs` | 主角的血改成红色：`Limb.Awake` 后置把材质 `_BloodDark`/`_BloodLight` 和流血粒子 startColor 换成红（原版是克隆体的橙黄色）；商人的 `TraderLimbMat` 跳过 | 只改人形 `Limb`；贴花 `wallbloodhuman` 本来就是红的 |
+| `BloodRed.cs` | 主角的血改成人类（守卫）红：每 0.5s 扫 `PlayerCamera.main.body`，① 肢体材质里绑 `limbBlood` 贴图的属性换成皮肤包的红色版 ② 黄血粒子 startColor 改成 `HumanBlood` 的 (0.717,0,0.057) ③ `BleedParticle.isHuman=true` + `wallBleed/groundBleed` 换 human 预制体 ④ 截肢小游戏 `bloodImage.color` 乘红 | **黄血是三处独立的东西**，只改材质颜色没用（0.19.2 之前的坑）。肢体材质每帧会被 `FurBloodUpdate` 写 `_BloodOverlay`，所以要改的是**贴图**；贴图属性名是 shader graph 哈希，只能按「当前贴图名叫 limbBlood」反查。别挂 `Limb.Awake` 的全局 postfix，那会把敌人也染红 |
 | `CombatFeel.cs` | 生物手感：**挂在伤害入口 `SpiderHandler.AnimalHit(float)` 的后置**（不是碰撞！），受伤才喷黄血 + 小型生物被顶飞（方向=玩家→生物，`stunTime` 0.4s） | 以前挂 `OnCollisionEnter2D` + 「撞到 Item + 相对速度」猜子弹，生物互撞/撞墙都会喷血；`AnimalHit` 由子弹/近战/炮塔/无人机统一调用 |
 | `UiText.cs` | 界面文案外置：读 `plugins/STEMFishDLC/ui.zh-CN.json`，覆盖 `RunConfig.All` 的模式 label/desc/perks 和开局界面主要文字；文件缺失就用代码默认值 | 改文案不用重编译，重启生效 |
 | `Jammer.cs` | 调试物品「屏蔽器」：使用 = 太阳耀斑（`SetUnchipped(true)`）+ 自绘选择框「拆/不拆」；拆 = 脑损伤 + 头部出血 + 永久无芯片（`runSettings["unchipped"]=true`），不拆 = 本层离线、下层次恢复；界面 90s 无操作自动按不拆 | 控制台 `spawn jammer player` / 调试 F3 |
@@ -417,6 +417,10 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 | 原版角色身高 | `PlayerCamera.Start`：`SetCharDetails(Random.Range(130,161) * body.heightMultiplier, …)`，**仅新开局**（`!SaveSystem.loadedRun`）。健康面板格式 `{height}cm \| {age}y \| #{id}`（`WoundView.SetCharDetails`），`cInfo = [height, age, id, ver]`。三个角色 heightMultiplier：EXPie 1.0 / Milky 0.8 / 第三位 1.1（`bloodScale` 同值） |
 | 缩放 `Body.transform.localScale` 会让角色悬浮 | 试过（0.19.0，已回滚）。肢体 Collider2D / HingeJoint2D 会一起放大，但落地基准（脚底接触地面）没有同步补偿，物理求解器把人撑在空中 |
 | 用 `body.heightMultiplier` 拉骨架也会抖 | 它让 `HandleVisuals` **每帧把肢体 localPosition 写成拉伸后的值**，而肢体间是 `HingeJoint2D`、anchor 在各自刚体局部坐标不跟着变 → 关节把 anchor 拉回重合、和代码对抗。原版 Milky 0.8 是往小缩（重力帮忙）+ 美术本来就小一号，所以看不出问题 |
+| 原版黄血的三个来源 | ① `Limb` 材质里 `Texture2D 「limbBlood」`（均色 223,176,0）② `BleedParticle` / `Special/UnderwaterBleedParticle` 的 `startColor` (1,0.788,0) ③ `blockblood`（SpriteRenderer.color = 1,0.79,0）与 `wallblood`（黄图）。人类版：`wallbloodhuman` sprite 本身就是红的、`blockbloodhuman` color=(0.55,0,0.03)、`HumanBlood` 粒子=(0.717,0,0.057) |
+| 血渍预制体由谁决定 | `BleedParticle.Start`：`isHuman ? wallbloodhuman : wallblood`、`isHuman ? Special/blockbloodhuman : Special/blockblood`。`isHuman` 是 public 字段，`wallBleed/groundBleed` 是私有字段，运行时可换 |
+| 肢体材质是每肢体克隆的 | `Limb.Awake`：`mat = new Material(renderer.material); renderer.sharedMaterial = mat;`（`Limb.mat` 私有）。所以改材质只影响这一条肢体，可以安全地只染主角 |
+| `lore.zh-CN.json` 用 NBSP 当缩进会整份读不出来 | 文件里混进 U+00A0 时 Newtonsoft 直接抛异常，`LoreData` 静默吞掉 → 终端里一篇档案都没有。改完用 `python -c "import json;json.load(open(...))"` 验一遍 |
 | 改体型外观的正确入口是 PPU | `FishSkin` 里 `ppu = BasePpu * (tex.width / baseSize.x)`，而**世界尺寸 = baseSize / BasePpu**，与 PNG 像素数无关。想放大外观就把 ppu 除以倍率（`BodyProportion.ApplyToPpu`），碰撞/物理零影响 |
 | 缩放 Body 还另有朝向坑 | `Body.SwitchDir` 用 `transform.localScale = (-x, 1, 1)` 表示朝向，会把 y/z 写回 1；任何对 body 缩放的每帧校正都必须**保留符号、只重写绝对值** |
 | 主角负重上限每帧暴涨 | `Body.HandlePeriodicChecks` 里负重只每 0.5 秒算一次；在 postfix 里无条件 `*= mult` 会指数增长。要 prefix 记前值，值变了才乘 |
@@ -426,6 +430,6 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 
 ## 8. 版本
 
-当前 **v0.19.2**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
+当前 **v0.19.3**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
 
 主要里程碑见 `.workbuddy/memory/` 下的日志。

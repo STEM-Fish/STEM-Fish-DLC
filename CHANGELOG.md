@@ -2,6 +2,29 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.19.3 — 2026-11-13
+
+- **主角的血改成红色（照搬守卫 / 人类那套）**。之前只改了材质上的 `_BloodDark/_BloodLight`
+  两个颜色，看着还是黄的，因为黄血其实是**三处独立的东西**：
+  - 肢体血渍是一张贴图 `Texture2D "limbBlood"`（均色 223,176,0），挂在 shader graph 烘出来的
+    哈希属性上（`_SampleTexture2D_722a364…Texture2D`），只能按"当前贴图叫 limbBlood"反查；
+    现在换成皮肤包里的 `Blood/limbBlood.png`（红）
+  - 流血粒子 `BleedParticle` / `Special/UnderwaterBleedParticle` 的 `startColor` 是常量
+    (1, 0.788, 0)；现在按"颜色等于黄血"识别，改成守卫 `HumanBlood` 的 (0.717, 0, 0.057)
+  - 落地/溅墙血渍由 `BleedParticle.isHuman` 决定：false → `blockblood`（黄）/`wallblood`（黄图）。
+    现在把 `isHuman` 置真并把 `wallBleed/groundBleed` 换成 `wallbloodhuman` / `Special/blockbloodhuman`
+  - 截肢小游戏的 `bloodImage` 是黄图，用 `Image.color` 乘成红
+  - 全部只作用于 `PlayerCamera.main.body`（`Limb.Awake` 本来就给每条肢体克隆了一份材质），
+    敌人/商人的血不变；**去掉了原来挂在 `Limb.Awake` 上的全局 postfix**
+- **档案重写（sf05 的批注 + sf06~sf11 全文）**：换成第一人称、平铺但有重量的写法，
+  清掉「不是…而是…」这类句式；主线改为从麻木 → 目睹同类之死 → 想清楚 → 决定反抗
+  - sf06 新增《往上爬的那个》全文（原来 body 是空的）
+  - sf10 补齐「先让芯片闭嘴才能拆」的因果，明确点名**某种信号屏蔽器**
+  - sf11 落到"箱子我带着，货我不交"
+- **修 `lore.zh-CN.json` 的 JSON 语法**：文件用 U+00A0（不换行空格）当缩进，Newtonsoft 直接解析失败
+  （整份档案会读不出来）。现在全部换成普通空格并统一两格缩进
+- 顺手修两个错字：sf01「很幸运的时」→「很幸运的是」、sf02 批注开头的孤立句号
+
 ## 0.19.2 — 2026-11-13
 
 - **体型改用正确做法重做**：新增 `BodyProportion`，**只放大贴图外观**，碰撞 / 刚体 / 关节一个字节不动

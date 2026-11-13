@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.19.2")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.19.3")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.19.2 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.19.3 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -173,6 +173,7 @@ public class Plugin : BaseUnityPlugin
         Safe(SaveSlots.Tick);           // 存档键 + 存档点自动存档（暂停时也要能存）
         Safe(MapSave.Tick);             // 读档后等世界生成完，写回地图 + 传送角色
         Safe(Jammer.Tick);              // 屏蔽器：没拆的话，下一层恢复芯片
+        Safe(BloodRed.Tick);            // 红血：肢体血渍 / 流血粒子 / 墙地血渍
 
         // 暂停时不吃热键（面板开关也交给游戏自己的暂停菜单）
         if (IsPaused) return;
