@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.19.0")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.19.1")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.19.0 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.19.1 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -75,7 +75,6 @@ public class Plugin : BaseUnityPlugin
         StarterKit.Init(this);      // 开局物资（只在新开局发一次）
         PlayerSkills.Init(this);    // 初始技能（新开局拉高 STR/RES/INT）
         PlayerCarry.Init(this);     // 负重上限倍率（同等力量比 EXPie 更能背）
-        BodyScale.Init(this);       // 主角整体等比放大（身高↑，不是纵向拉伸）
         UiText.Init(this);          // 界面文案外置（ui.zh-CN.json，覆盖模式卡文字）
         RunConfig.Init(this);       // 开局难度（含动态刷怪 SpawnDirector）
         NewRunPanel.Init(this);     // 我们自己的投放（难度）界面
@@ -155,7 +154,6 @@ public class Plugin : BaseUnityPlugin
         Safe(AmmoBox.Tick);             // 弹药箱：战利品池懒注入
         Safe(StarterKit.Tick);          // 开局物资：等玩家出生后发放
         Safe(PlayerSkills.Tick);        // 初始技能：等玩家出生后应用
-        Safe(BodyScale.Tick);           // 体型缩放：等玩家出生后等比放大
         Safe(FishSkin.Tick);            // 内置皮肤：每帧校正角色贴图
         Safe(LoadingArt.Tick);          // 加载界面立绘：每两帧校正一次
         Safe(MenuArt.Tick);             // 主菜单立绘：生成轮廓 / 平移文字

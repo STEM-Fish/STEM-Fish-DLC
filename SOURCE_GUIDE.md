@@ -19,7 +19,7 @@
 ```
 STEM_Fish_MOD/
 ├─ STEMFishDLC/              ★ 插件源码（主工程）
-│  ├─ *.cs                   46 个源文件，约 13,400 行
+│  ├─ *.cs                   45 个源文件，约 13,100 行
 │  ├─ STEMFishDLC.csproj     工程文件
 │  ├─ deploy.sh              一键构建 + 部署
 │  ├─ items.zh-CN.json       物品名/描述（运行时读）
@@ -183,7 +183,6 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 | `UiText.cs` | 界面文案外置：读 `plugins/STEMFishDLC/ui.zh-CN.json`，覆盖 `RunConfig.All` 的模式 label/desc/perks 和开局界面主要文字；文件缺失就用代码默认值 | 改文案不用重编译，重启生效 |
 | `Jammer.cs` | 调试物品「屏蔽器」：使用 = 太阳耀斑（`SetUnchipped(true)`）+ 自绘选择框「拆/不拆」；拆 = 脑损伤 + 头部出血 + 永久无芯片（`runSettings["unchipped"]=true`），不拆 = 本层离线、下层次恢复；界面 90s 无操作自动按不拆 | 控制台 `spawn jammer player` / 调试 F3 |
 | `Hearing.cs` | 战术耳塞：听力保护（拦截 `GunScript.Fire` 增量）+ 全局闷声（覆写 `SoundCutoff`） | 读不到 mixer 值时**必须放弃覆盖**，否则会把受损听力"治好" |
-| `BodyScale.cs` | 按设定身高 1.70m 等比缩放：写 `PlayerCamera.main.body.transform.localScale`（`k = 170 / 145.5 ≈ 1.168`）+ 把 `WoundView.cInfo[0]` 固定成 170 | 玩家结构是 `Dune/Milky → Body(ragdoll 骨架) → 肢体` + 同级屏幕外 `Anim` 骨骼；`HandleVisuals` 每帧把 `Anim` 姿势写进肢体 localPosition，所以缩放 Body 是骨架/贴图/碰撞箱一起放大。**必须保留 scale.x 的符号**（`SwitchDir` 用 ±x 表示朝向，且会把 y/z 写回 1）。**基准必须用原版常量 145.5 而不是当前 cHeight**——cHeight 会进存档，读档时 170/170=1.0 就缩回去了 |
 | `PlayerCarry.cs` | 主角负重上限倍率：`Body.HandlePeriodicChecks` 的 prefix+postfix，只对玩家把 `maxEncumberance ×Mult` 并重算 `overEncumberance` | ⚠ 原版那段包在 `if (halfSecondCheckTime > 0.5)` 里，postfix 里无条件乘会**每帧乘一次 → 指数爆炸**；必须用 prefix 记住前值、比对"这次真的重算过"再乘 |
 
 ---
@@ -415,7 +414,8 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 | 原版在最后一层存档会把 biome 夹成 1 | `SaveGame`：`if (biome >= amountOfLayers) biome = 1`。所以列表层号不能只信 `save.sv`，要读我们 `.map` 头里的深度 |
 | UnityPy + TypeTree 读 `WorldGeneration` 全是垃圾 | 生成的树字段对齐不对（`read_str out of bounds`）。要么原始字节扫 PPtr，要么运行时 dump |
 | 原版角色身高 | `PlayerCamera.Start`：`SetCharDetails(Random.Range(130,161) * body.heightMultiplier, …)`，**仅新开局**（`!SaveSystem.loadedRun`）。健康面板格式 `{height}cm \| {age}y \| #{id}`（`WoundView.SetCharDetails`），`cInfo = [height, age, id, ver]`。三个角色 heightMultiplier：EXPie 1.0 / Milky 0.8 / 第三位 1.1（`bloodScale` 同值） |
-| 缩放 Body 后一转身体型又缩回去 | `Body.SwitchDir` 用 `transform.localScale = (-x, 1, 1)` 表示朝向，会把 y 写回 1。我们的每帧校正必须**保留符号、重写绝对值**，否则不是被它掰回去就是把它掰回去 |
+| 缩放 `Body.transform.localScale` 会让角色悬浮 | 试过（0.19.0，已回滚）。肢体 Collider2D / HingeJoint2D 会一起放大，但落地基准（脚底接触地面）没有同步补偿，物理求解器把人撑在空中。要真做得重算脚部锚点 + 全部关节，风险大于收益 |
+| 缩放 Body 还另有朝向坑 | `Body.SwitchDir` 用 `transform.localScale = (-x, 1, 1)` 表示朝向，会把 y/z 写回 1；任何对 body 缩放的每帧校正都必须**保留符号、只重写绝对值** |
 | 主角负重上限每帧暴涨 | `Body.HandlePeriodicChecks` 里负重只每 0.5 秒算一次；在 postfix 里无条件 `*= mult` 会指数增长。要 prefix 记前值，值变了才乘 |
 | 原版负重公式 | `(11 + Clamp(weightOffset+15,-60,0)*0.1 - sickness*0.025 + 吃撑1.5 - 饿1.5 - 渴1.0 + (STR-10)*0.5 + Min((STR-10)*0.5,(RES-10)*0.5)) * encumbrancecap`；`overEncumberance = Clamp01(total/max - 1)` |
 
@@ -423,6 +423,6 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 
 ## 8. 版本
 
-当前 **v0.19.0**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
+当前 **v0.19.1**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
 
 主要里程碑见 `.workbuddy/memory/` 下的日志。
