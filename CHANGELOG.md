@@ -2,6 +2,21 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.19.2 — 2026-11-13
+
+- **体型改用正确做法重做**：新增 `BodyProportion`，**只放大贴图外观**，碰撞 / 刚体 / 关节一个字节不动
+  - 原理：`FishSkin` 的 PPU 算法下 **世界尺寸 = baseSize / BasePpu，跟 PNG 像素数无关**；
+    所以建 sprite 时把 ppu 除以 k（`ppu = BasePpu * (tex.width / baseSize.x) / k`）就是纯外观放大
+  - 换算：原版 EXPie 身高 `Random.Range(130,161) × heightMultiplier(1.0)`，中值 145.5cm；
+    设定 1.70m ⇒ `k = 170 / 145.5 ≈ 1.168`
+  - 同时把 `WoundView.cInfo[0]` 写成 170（健康面板 `170cm | … | #id`，存档 `cHeight` 同步）
+- **为什么不再用 `transform.localScale` / `heightMultiplier`**：
+  - 缩放 Body 会把 15 个肢体的 Collider2D 一起放大，脚底基准没补偿 → 物理求解器把人撑在空中（0.19.0 的悬浮）
+  - 拉 `heightMultiplier` 会每帧改写肢体 `localPosition`，而肢体间是 `HingeJoint2D` 铰接、
+    joint anchor 是刚体局部坐标不跟着变 → 关节与代码互相对抗，抖动/撕裂
+- 代价（诚实记录）：肢体中心没动，相邻贴图会重叠 (k−1) ≈ 17%，视觉上是"整体大了一圈"而不是"腿变长"。
+  真要改骨架长度，必须同时重算每个 HingeJoint2D 的 anchor 与 collider 形状
+
 ## 0.19.1 — 2026-11-13
 
 - **撤销主角体型缩放**（0.19.0 引入）。放大 `Body.transform.localScale` 之后角色会**悬浮**：

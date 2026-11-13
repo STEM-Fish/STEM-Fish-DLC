@@ -136,9 +136,12 @@ public static class FishSkin
                     tex.name = name;
 
                     // PPU：没有基准尺寸时按原尺寸 1:1 处理
+                    // 世界尺寸 = baseSize / BasePpu，所以把 ppu 除以体型倍率就能放大外观
+                    // （见 BodyProportion：只改显示大小，不动碰撞/物理）
                     float ppu = BasePpu;
                     if (baseSizes.TryGetValue(sub + "/" + name, out var bs) && bs.x > 0)
                         ppu = BasePpu * ((float)tex.width / bs.x);
+                    ppu = BodyProportion.ApplyToPpu(ppu);
 
                     var sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
                         new Vector2(0.5f, 0.5f), ppu, 0, SpriteMeshType.FullRect);
