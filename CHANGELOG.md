@@ -4,11 +4,17 @@
 
 ## 0.19.0 — 2026-11-13
 
-- **主角体型等比放大**：新增 `BodyScale`，缩放 `Body.transform.localScale`（默认 ×1.15）。
+- **主角体型按设定身高 1.70m 等比放大**：新增 `BodyScale`，缩放 `Body.transform.localScale`。
+  换算依据：原版新开局身高 = `Random.Range(130,161) * body.heightMultiplier`
+  （`PlayerCamera.Start`，EXPie 的 heightMultiplier = 1.0）→ 中值 145.5cm，
+  所以 `k = 170 / 145.5 ≈ ×1.168`。同时把档案身高 `WoundView.cInfo[0]` 固定写成 170
+  （健康面板显示 `170cm | … | #id`，存进存档的 `cHeight` 也是 170）
   原版玩家结构是 `Dune/Milky → Body（物理 ragdoll 骨架）→ 各肢体` + 同级屏幕外 `Anim` 动画骨骼，
   `Body.HandleVisuals` 每帧把 `Anim` 的姿势写进肢体的 localPosition —— 所以缩放 Body 就是
   **骨架 / 贴图 / 碰撞箱 / 关节一起等比放大**，身高和肩宽同比例，不是把贴图纵向拉长。
-  保留 `localScale.x` 的符号：原版 `Body.SwitchDir` 用 ±x 表示朝向，写死正数会把转身掰回来
+  保留 `localScale.x` 的符号：原版 `Body.SwitchDir` 用 ±x 表示朝向，写死正数会把转身掰回来。
+  ⚠ 缩放基准用**原版常量**而不是"读当前 cHeight 再除"——后者会把 170 存进存档，
+  读档时 170/170 = 1.0 就把体型缩回原版了
 - **开局力量/韧性下调**：`[Skills]` STR/RES 18/16 → **12/12**（原版 EXPie 是 9/8），INT 仍 18。
   带一次性迁移（老 cfg 里等于 18/16 的才改，自己调过的保留）
 - **同等力量下背得更多**：新增 `PlayerCarry`，挂 `Body.HandlePeriodicChecks` 的 prefix+postfix，
