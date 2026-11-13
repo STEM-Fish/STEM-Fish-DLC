@@ -163,9 +163,9 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 
 | 文件 | 作用 |
 |---|---|
-| `LoreData.cs` | 档案数据：加载 `lore.zh-CN.json`、已读记录、`noteLater` 按层显示 |
+| `LoreData.cs` | 档案数据：加载 `lore.zh-CN.json`、已读记录、`noteLater` 按层显示；`UnlockForDepth(depth)` 按每篇的 `layer` 字段精确发放（没配就退回 `NextUnread`） |
 | `LoreNote.cs` | 世界里的纸片投放（每局一张，捡到解锁一篇） |
-| `LoreProgress.cs` | **按层自动解锁**：每下一层补一篇未读档案 |
+| `LoreProgress.cs` | **按层自动解锁**：每下一层调 `LoreData.UnlockForDepth(depth)`，只发这一层该出的那篇 |
 | `FishVoice.cs` | 台词库：`expand`（原版情境混入）+ `chatter`（主动独白） |
 | `Vitals.cs` | 生理「变化速率」采样，供终端体征页显示 |
 
@@ -181,7 +181,7 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 | `BloodRed.cs` | 主角的血改成人类（守卫）红：每 0.5s 扫 `PlayerCamera.main.body`，① 肢体材质里绑 `limbBlood` 贴图的属性换成皮肤包的红色版 ② 黄血粒子 startColor 改成 `HumanBlood` 的 (0.717,0,0.057) ③ `BleedParticle.isHuman=true` + `wallBleed/groundBleed` 换 human 预制体 ④ 截肢小游戏 `bloodImage.color` 乘红 | **黄血是三处独立的东西**，只改材质颜色没用（0.19.2 之前的坑）。肢体材质每帧会被 `FurBloodUpdate` 写 `_BloodOverlay`，所以要改的是**贴图**；贴图属性名是 shader graph 哈希，只能按「当前贴图名叫 limbBlood」反查。别挂 `Limb.Awake` 的全局 postfix，那会把敌人也染红 |
 | `CombatFeel.cs` | 生物手感：**挂在伤害入口 `SpiderHandler.AnimalHit(float)` 的后置**（不是碰撞！），受伤才喷黄血 + 小型生物被顶飞（方向=玩家→生物，`stunTime` 0.4s） | 以前挂 `OnCollisionEnter2D` + 「撞到 Item + 相对速度」猜子弹，生物互撞/撞墙都会喷血；`AnimalHit` 由子弹/近战/炮塔/无人机统一调用 |
 | `UiText.cs` | 界面文案外置：读 `plugins/STEMFishDLC/ui.zh-CN.json`，覆盖 `RunConfig.All` 的模式 label/desc/perks 和开局界面主要文字；文件缺失就用代码默认值 | 改文案不用重编译，重启生效 |
-| `Jammer.cs` | 调试物品「屏蔽器」：使用 = 太阳耀斑（`SetUnchipped(true)`）+ 自绘选择框「拆/不拆」；拆 = 脑损伤 + 头部出血 + 永久无芯片（`runSettings["unchipped"]=true`），不拆 = 本层离线、下层次恢复；界面 90s 无操作自动按不拆 | 控制台 `spawn jammer player` / 调试 F3 |
+| `Jammer.cs` | 剧情道具「屏蔽器」：平时右键无反应；带着它进第 10 层（`[Items] JammerDepth`）时自动暂停 + 播 `voice.zh-CN.json` 的 `lines.jammer` + 弹「拆/留」；拆 = 脑损伤 + 头部出血 + `Body.DoGoreSound()` + 永久无芯片；留 = 芯片不动、道具不消耗，本层内还能再按，离开该层后彻底失效 | **只在 `biomeDepth == JammerDepth` 生效**；暂停是借 `PlayerCamera.SetTimeScale(Paused)`，时间停住比 patch 输入稳；界面 120s 无操作按「留」 |
 | `Hearing.cs` | 战术耳塞：听力保护（拦截 `GunScript.Fire` 增量）+ 全局闷声（覆写 `SoundCutoff`） | 读不到 mixer 值时**必须放弃覆盖**，否则会把受损听力"治好" |
 | `PlayerCarry.cs` | 主角负重上限倍率：`Body.HandlePeriodicChecks` 的 prefix+postfix，只对玩家把 `maxEncumberance ×Mult` 并重算 `overEncumberance` | ⚠ 原版那段包在 `if (halfSecondCheckTime > 0.5)` 里，postfix 里无条件乘会**每帧乘一次 → 指数爆炸**；必须用 prefix 记住前值、比对"这次真的重算过"再乘 |
 | `BodyProportion.cs` | 体型外观放大：只把 `FishSkin` 建 sprite 时的 PPU 除以 k（`k = 170/145.5 ≈ 1.168`），碰撞/刚体/关节不动；另把 `WoundView.cInfo[0]` 写 170 | 关键：**世界尺寸 = baseSize / BasePpu**，与 PNG 像素数无关 —— 所以改 PPU 才是纯外观缩放。别用 `Body.transform.localScale`（会把 collider 一起放大 → 悬浮），也别用 `body.heightMultiplier`（每帧改 localPosition，和 HingeJoint2D 的 anchor 对抗 → 抖动） |
@@ -430,6 +430,6 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 
 ## 8. 版本
 
-当前 **v0.19.3**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
+当前 **v0.20.0**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
 
 主要里程碑见 `.workbuddy/memory/` 下的日志。

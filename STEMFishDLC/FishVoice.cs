@@ -369,6 +369,19 @@ public static class FishVoice
         return fallback;
     }
 
+    // 按顺序取一整段台词（剧情序列用，不随机；key 不存在返回 null）
+    public static List<string> Sequence(string key)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(key) &&
+                _lines.TryGetValue(key, out var list) && list != null && list.Count > 0)
+                return new List<string>(list);
+        }
+        catch { }
+        return null;
+    }
+
     // 让 Talker 说一句指定台词（换弹等即时反馈用，绕过分类冷却）
     public static void SayLine(string text)
     {

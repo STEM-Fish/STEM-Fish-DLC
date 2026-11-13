@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,39 +7,55 @@ using UnityEngine.UI;
 namespace STEMFishDLC;
 
 // ============================================================================
-//  Jammer - 调试物品「屏蔽器」
+//  Jammer - 剧情道具「屏蔽器」
 //  ---------------------------------------------------------------------------
-//  效果拆解（都是游戏自己的机制，我们只按顺序调）：
-//    ① 等同「太阳耀斑」层修饰器：`WorldGeneration.world.SetUnchipped(true)`
-//       （UnchippedModifier.Initialize 做的就是这一句；下一层 Disable 时恢复）
-//    ② 弹出「是否拆除颅内芯片」的选择
-//         · 不拆 → 芯片只在本层离线，屏蔽器烧毁（下一层自动恢复芯片）
-//         · 拆   → 中度脑损伤 + 头部出血，并把 runSettings["unchipped"] 永久置真，
-//                  以后每一层（以及读档后）都是无芯片模式 → 走游戏的自由结局
+//  v0.20 起它**不再是一件可以随手用的道具**，而是第 10 层的一个岔路口：
 //
-//  怎么拿到：控制台 `spawn jammer player`，或调试模式下按 F3。
-//  物品定义在 ItemRegistry（template=medkit + stripContainer + useAction=Jammer.Use）。
+//    · 平时（任何其它层）右键 → 没有反应，不消耗
+//    · 身上带着它下到第 10 层（拿到货物那一层）→ 进入该层后立刻定住玩家，
+//      播几段自言自语，然后把「拆 / 不拆」摆在你面前
+//        · 拆   → 中度脑损伤 + 头部出血 + 受伤音效，芯片取出来，
+//                 runSettings["unchipped"]=true → 此后永久无芯片（自由结局线）
+//        · 不拆 → 芯片留着，屏蔽器还在兜里；**本层之内**还能再手动按一次
+//    · 一旦离开第 10 层，屏蔽器彻底失效（芯片换层就换密钥，它匹配不上）
+//
+//  为什么要定住玩家：这是个不可逆的选择，得让人站着看完再点。
+//  实现上直接借游戏自己的暂停（`PlayerCamera.SetTimeScale(Paused)`），
+//  时间停住 = 物理停住 = 谁也动不了，不用去 patch 输入。
 // ============================================================================
 
 public static class Jammer
 {
-    public static bool Enabled = true;
-
-    private static int _flareDepth = int.MinValue;   // != MinValue：未拆除，记下使用时的层号
-    private static bool _open;
-    private static GameObject _root;
-    private static Item _item;
-    private static Body _body;
-    private static PlayerCamera.SpeedType _prevSpeed = PlayerCamera.SpeedType.Normal;
-    private static bool _touchedSpeed;
-    private static WorldGeneration _uiSynced;   // 每个世界实例只同步一次 UI 状态
-    private static float _openAt;       // 界面打开时刻（超时保底，防止把玩家锁死在暂停里）
-    private const float AutoKeepAfter = 90f;
-
     public const string Id = "jammer";
 
+    public static bool Enabled = true;
     public static bool LootEnabled = true;
     public static int LootWeight = 2;
+    public static int TriggerDepth = 10;
+
+    private enum Phase { Idle, Lines, Choice }
+
+    private static Phase _phase = Phase.Idle;
+    private static List<string> _script;
+    private static int _line;
+    private static float _nextAt;
+
+    private static bool _open;
+    private static float _openAt;
+    private const float AutoKeepAfter = 120f;   // 保底：别把人锁死在暂停里
+
+    private static GameObject _root;
+    private static TextMeshProUGUI _log;
+    private static GameObject _btnRemove, _btnKeep;
+
+    private static Item _item;
+    private static Body _body;
+    private static WorldGeneration _world;
+    private static int _forcedFor = int.MinValue;   // 已经播过开场白的层（每次换世界重置）
+
+    private static PlayerCamera.SpeedType _prevSpeed = PlayerCamera.SpeedType.Normal;
+    private static bool _touchedSpeed;
+    private static WorldGeneration _uiSynced;
     private static bool _poolInjected;
 
     public static void Init(Plugin plugin)
@@ -46,90 +63,296 @@ public static class Jammer
         try
         {
             Enabled = plugin.Config.Bind("Items", "Jammer", true,
-                "启用「屏蔽器」（太阳耀斑效果 + 拆除芯片抉择）").Value;
+                "启用「屏蔽器」（第 10 层的拆芯片抉择）").Value;
             LootEnabled = plugin.Config.Bind("Items", "JammerLoot", true,
                 "屏蔽器像普通物品一样出现在战利品里（商人货架 / 打碎的物资箱 / 尸体遗留）").Value;
             LootWeight = Mathf.Clamp(plugin.Config.Bind("Items", "JammerWeight", 2,
                 "屏蔽器在战利品池里的权重（1 = 很稀有，5 = 常见；上限 20）").Value, 1, 20);
-            Plugin.Log.LogInfo($"[STEMFishDLC] 屏蔽器：{(Enabled ? "启用" : "停用")} | 战利品投放 {(LootEnabled ? $"权重 {LootWeight}" : "关")}");
-        }
-        catch { }
-    }
+            TriggerDepth = Mathf.Clamp(plugin.Config.Bind("Items", "JammerDepth", 10,
+                "带着屏蔽器下到第几层时触发抉择").Value, 1, 10);
 
-    // ==========================================================================
-    //  使用
-    // ==========================================================================
-    public static void Use(Body body, Item item)
-    {
-        if (!Enabled || _open || body == null) return;
-
-        try
-        {
-            var w = WorldGeneration.world;
-            if (w != null)
-            {
-                w.SetUnchipped(true);                 // ① 耀斑同款：芯片离线
-                _flareDepth = w.biomeDepth;
-            }
+            Plugin.Log.LogInfo($"[STEMFishDLC] 屏蔽器：{(Enabled ? $"第 {TriggerDepth} 层触发抉择" : "停用")} | " +
+                               $"战利品 {(LootEnabled ? $"权重 {LootWeight}" : "关")}");
         }
         catch (Exception e)
         {
-            Plugin.Log.LogWarning($"[STEMFishDLC] 屏蔽器：芯片离线失败 {e.Message}");
+            Plugin.Log.LogWarning($"[STEMFishDLC] 屏蔽器配置读取失败: {e.Message}");
+        }
+    }
+
+    // ==========================================================================
+    //  右键使用：只有第 10 层有效
+    // ==========================================================================
+    public static void Use(Body body, Item item)
+    {
+        if (!Enabled || body == null || item == null || _open) return;
+
+        WorldGeneration w = null;
+        try { w = WorldGeneration.world; } catch { }
+
+        int depth = -1;
+        try { if (w != null) depth = w.biomeDepth; } catch { }
+
+        if (w == null || depth != TriggerDepth)
+        {
+            // 不可用：既不消耗也不打开界面（走完第 10 层它就彻底没用了）
+            SaveSlots.Toast("没有反应。它的电池早就凉了。");
+            Plugin.Log.LogInfo($"[STEMFishDLC] 屏蔽器：当前层 {depth} 不是可用层，无反应");
+            return;
         }
 
         _body = body;
         _item = item;
-        _open = true;
-        _openAt = Time.unscaledTime;
-
-        PauseGame();
-        BuildUI();
-        Plugin.Log.LogInfo("[STEMFishDLC] 屏蔽器已启动：芯片离线，等待玩家决定是否拆除");
-    }
-
-    // 每帧：没拆的话，到下一层把芯片恢复回来
-    public static void Tick()
-    {
-        InjectPool();
-
-        // 每个新世界同步一次「无芯片」UI：WorldGeneration.Start 只在 unchipped=true 时
-        // 调 SetUnchipped(true)，false 时什么都不做 —— 上一局留下的 PlayerCamera 无芯片
-        // 界面会一直挂着，看起来就像新存档也是无芯片模式。这里按世界真实状态刷一次。
-        SyncChipUi();
-
-        // 保底：界面开着但玩家一直没选（或 UI 没显示出来）→ 90 秒后按"不拆"处理，
-        // 绝不能把人永远锁在 timeScale=0 里
-        if (_open && Time.unscaledTime - _openAt > AutoKeepAfter)
-        {
-            Plugin.Log.LogWarning("[STEMFishDLC] 屏蔽器界面超时，自动按「留着它」处理");
-            ChooseKeep();
-            return;
-        }
-
-        if (_flareDepth == int.MinValue) return;
-
-        WorldGeneration w = null;
-        try { w = WorldGeneration.world; } catch { return; }
-        if (w == null) return;
-
-        int depth;
-        try { depth = w.biomeDepth; } catch { return; }
-        if (depth == _flareDepth) return;
-
-        try { w.SetUnchipped(false); } catch { }
-        _flareDepth = int.MinValue;
-        Plugin.Log.LogInfo("[STEMFishDLC] 屏蔽器效果结束：芯片恢复在线");
+        OpenPanel(false);
     }
 
     // ==========================================================================
-    //  战利品池注入（和弹药箱同一套机制）
-    //  ---------------------------------------------------------------------------
-    //  ItemLootPool 的三个消费方正好覆盖作者要的三种来源：
-    //    · TraderScript.GenerateSingleItemList  → 商人货架
-    //    · BuildingEntity.CheckDamage           → 打碎物资箱的掉落
-    //    · CorpseScript.Start                   → 尸体上的遗留物
-    //  我们的 id 不在 Resources 里，但 SaveSlots 已经挂了 Resources.Load(string)
-    //  前缀（返回 ItemRegistry 造的模板），所以这几条路径都能正常生成。
+    //  每帧
+    // ==========================================================================
+    public static void Tick()
+    {
+        InjectPool();
+        SyncChipUi();
+
+        if (!Enabled) return;
+
+        if (_phase == Phase.Lines) { PumpLines(); return; }
+
+        if (_phase == Phase.Choice)
+        {
+            if (Time.unscaledTime - _openAt > AutoKeepAfter)
+            {
+                Plugin.Log.LogWarning("[STEMFishDLC] 屏蔽器界面超时，按「不拆」处理");
+                ChooseKeep();
+            }
+            return;
+        }
+
+        TryTrigger();
+    }
+
+    private static void TryTrigger()
+    {
+        WorldGeneration w = null;
+        try { w = WorldGeneration.world; } catch { }
+
+        if (w == null)
+        {
+            if (_world != null) { _world = null; _forcedFor = int.MinValue; }
+            return;
+        }
+        if (!ReferenceEquals(w, _world))          // 换局 / 读档：标记归零
+        {
+            _world = w;
+            _forcedFor = int.MinValue;
+        }
+
+        int depth;
+        try { depth = w.biomeDepth; } catch { return; }
+        if (depth != TriggerDepth) return;
+        if (_forcedFor == depth) return;
+
+        // 等世界生成完、别卡在生成/过场里
+        try { if (w.timeSinceFinishedGeneration < 4f) return; } catch { return; }
+        try { if (!w.worldExists) return; } catch { return; }
+        if (Plugin.IsPaused) return;
+        try { if (MinigameBase.main != null && MinigameBase.main.currentMinigame != null) return; } catch { }
+
+        Body body = null;
+        try { body = PlayerCamera.main != null ? PlayerCamera.main.body : null; } catch { }
+        if (body == null) return;
+
+        Item it = null;
+        try { if (!body.FindByIdThorough(Id, out it) || it == null) return; } catch { return; }
+
+        _body = body;
+        _item = it;
+        _forcedFor = depth;
+
+        Plugin.Log.LogInfo("[STEMFishDLC] 屏蔽器：第 10 层开场，定住玩家并开始抉择");
+        OpenPanel(true);
+    }
+
+    // ==========================================================================
+    //  面板
+    // ==========================================================================
+    private static void OpenPanel(bool withLines)
+    {
+        if (_open) return;
+
+        _open = true;
+        _openAt = Time.unscaledTime;
+        _line = 0;
+        _nextAt = Time.unscaledTime + 0.5f;
+
+        if (withLines)
+        {
+            _script = FishVoice.Sequence("jammer");
+            if (_script == null || _script.Count == 0) _script = FallbackScript();
+            _phase = Phase.Lines;
+        }
+        else
+        {
+            _script = null;
+            _phase = Phase.Choice;
+        }
+
+        PauseGame();
+        BuildUI();
+
+        if (withLines) SetLog("");
+        else
+        {
+            SetLog("<color=#c9d3d8>屏蔽器还在兜里。</color>\n\n" +
+                   "芯片还埋在后颈。它现在离你只有一层皮的深度 —— 要走，就趁现在。");
+            ShowButtons();
+        }
+    }
+
+    private static List<string> FallbackScript()
+    {
+        return new List<string>
+        {
+            "背上的东西刚钉进去，血还在渗。终端那行字已经改成了 RETURN--BASE。",
+            "他们把我钉在箱子底下，让我往上走。到了地面，箱子交货，我回收。",
+            "兜里那个东西在发烫。屏蔽器。换它的时候，我以为自己会用得上。",
+            "它只在这一层有用。芯片换层就换密钥，过了这层，它就是块塑料。",
+            "所以现在就选。拆，还是留。",
+        };
+    }
+
+    private static void PumpLines()
+    {
+        if (_script == null || _line >= _script.Count) { ToChoice(); return; }
+
+        bool skip = false;
+        try { skip = Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0); } catch { }
+
+        if (!skip && Time.unscaledTime < _nextAt) return;
+
+        AppendLog(_script[_line]);
+        _line++;
+        _nextAt = Time.unscaledTime + 3.2f;
+
+        if (_line >= _script.Count) ToChoice();
+    }
+
+    private static void ToChoice()
+    {
+        if (_phase == Phase.Choice) return;
+        _phase = Phase.Choice;
+        _openAt = Time.unscaledTime;
+        ShowButtons();
+    }
+
+    private static void SetLog(string text)
+    {
+        try { if (_log != null) _log.text = text; } catch { }
+    }
+
+    private static void AppendLog(string line)
+    {
+        try
+        {
+            if (_log == null) return;
+            _log.text = string.IsNullOrEmpty(_log.text) ? line : _log.text + "\n\n" + line;
+            if (line == null) return;
+            try { Plugin.Log.LogInfo("[STEMFishDLC] 屏蔽器独白: " + line); } catch { }
+        }
+        catch { }
+    }
+
+    private static void ShowButtons()
+    {
+        try { if (_btnRemove != null) _btnRemove.SetActive(true); } catch { }
+        try { if (_btnKeep != null) _btnKeep.SetActive(true); } catch { }
+    }
+
+    // ==========================================================================
+    //  选择
+    // ==========================================================================
+    private static void ChooseRemove()
+    {
+        try
+        {
+            var body = _body;
+            if (body == null)
+            {
+                try { body = PlayerCamera.main != null ? PlayerCamera.main.body : null; } catch { }
+            }
+
+            if (body != null)
+            {
+                body.brainHealth = Mathf.Max(0f, body.brainHealth - 35f);   // 中度脑损伤
+                body.shock = Mathf.Max(body.shock, 20f);
+
+                var head = FindHead(body);
+                if (head != null)
+                {
+                    head.bleedAmount += 25f;                                 // 头部出血
+                    head.pain += 30f;
+                    head.skinHealth = Mathf.Max(0f, head.skinHealth - 8f);
+                }
+
+                // 受伤音效：原版的 gore 音（`DoGoreSound` 随机播 gore1..N）
+                try { body.DoGoreSound(); } catch { }
+            }
+
+            WorldGeneration w = null;
+            try { w = WorldGeneration.world; } catch { }
+            if (w != null) w.SetUnchipped(true);
+
+            // 永久无芯片：WorldGeneration.Start 每次建层都会读这个键
+            try
+            {
+                if (WorldGeneration.runSettings != null) WorldGeneration.runSettings["unchipped"] = true;
+                var pre = PreRunScript.instance;
+                if (pre != null && pre.runSettings != null) pre.runSettings["unchipped"] = true;
+            }
+            catch (Exception e) { Plugin.Log.LogWarning($"[STEMFishDLC] 写入无芯片设置失败: {e.Message}"); }
+
+            Plugin.Log.LogInfo("[STEMFishDLC] 芯片已拆除：脑损伤 + 头部出血，永久无芯片模式");
+            SaveSlots.Toast("芯片拆掉了。从现在起，没人给你计时了。");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] 拆除芯片失败: {e.Message}\n{e.StackTrace}");
+        }
+
+        Close(true);
+    }
+
+    private static void ChooseKeep()
+    {
+        try
+        {
+            // 芯片还在：把「无芯片」状态按回世界真实值（防止以前留下的耀斑状态挂在这）
+            WorldGeneration w = null;
+            try { w = WorldGeneration.world; } catch { }
+            if (w != null) w.SetUnchipped(false);
+        }
+        catch { }
+
+        Plugin.Log.LogInfo("[STEMFishDLC] 玩家选择保留芯片：屏蔽器留在背包（本层内仍可再用）");
+        SaveSlots.Toast("你把屏蔽器塞回兜里。它只在这一层有用。");
+        Close(false);
+    }
+
+    private static Limb FindHead(Body body)
+    {
+        try
+        {
+            var limbs = body.limbs;
+            if (limbs == null) return null;
+            for (int i = 0; i < limbs.Length; i++)
+                if (limbs[i] != null && limbs[i].isHead) return limbs[i];
+        }
+        catch { }
+        return null;
+    }
+
+    // ==========================================================================
+    //  战利品池注入（商人货架 / 打碎的箱子 / 尸体遗留）
     // ==========================================================================
     private static void InjectPool()
     {
@@ -137,7 +360,7 @@ public static class Jammer
         try
         {
             var pool = ItemLootPool.pool;
-            if (pool == null || pool.Count == 0) return;      // 还没初始化
+            if (pool == null || pool.Count == 0) return;
 
             int added = 0;
             foreach (var key in new[] { "utility", "military", "container" })
@@ -150,7 +373,6 @@ public static class Jammer
 
             if (added == 0)
             {
-                // 池名和预期不同 → 塞进元素最多的那个，至少保证能出现
                 string bestKey = null;
                 int best = 0;
                 foreach (var kv in pool)
@@ -180,77 +402,9 @@ public static class Jammer
         WorldGeneration w = null;
         try { w = WorldGeneration.world; } catch { return; }
         if (w == null) { _uiSynced = null; return; }
-        if (w == _uiSynced) return;
+        if (ReferenceEquals(w, _uiSynced)) return;
         _uiSynced = w;
-        try { w.SetUnchipped(WorldGeneration.unchipped); } catch { }   // 静态属性，读的是 world.unchippedMode
-    }
-
-    // ==========================================================================
-    //  选择
-    // ==========================================================================
-    private static void ChooseRemove()
-    {
-        try
-        {
-            var body = _body;
-            if (body != null)
-            {
-                body.brainHealth = Mathf.Max(0f, body.brainHealth - 35f);   // 中度脑损伤
-                body.shock = Mathf.Max(body.shock, 20f);
-
-                var head = FindHead(body);
-                if (head != null)
-                {
-                    head.bleedAmount += 25f;                                 // 头部出血
-                    head.pain += 30f;
-                    head.skinHealth = Mathf.Max(0f, head.skinHealth - 8f);
-                }
-            }
-
-            WorldGeneration w = null;
-            try { w = WorldGeneration.world; } catch { }
-            if (w != null) w.SetUnchipped(true);
-
-            // 永久无芯片：WorldGeneration.Start 每次建层都会读这个键
-            try
-            {
-                if (WorldGeneration.runSettings != null) WorldGeneration.runSettings["unchipped"] = true;
-                var pre = PreRunScript.instance;
-                if (pre != null && pre.runSettings != null) pre.runSettings["unchipped"] = true;
-            }
-            catch (Exception e) { Plugin.Log.LogWarning($"[STEMFishDLC] 写入无芯片设置失败: {e.Message}"); }
-
-            _flareDepth = int.MinValue;      // 不再恢复
-            Plugin.Log.LogInfo("[STEMFishDLC] 芯片已拆除：脑损伤 + 头部出血，永久无芯片模式");
-
-            SaveSlots.Toast("芯片拆掉了。从现在起，没人给你计时了。");
-        }
-        catch (Exception e)
-        {
-            Plugin.Log.LogWarning($"[STEMFishDLC] 拆除芯片失败: {e.Message}\n{e.StackTrace}");
-        }
-
-        Close(true);
-    }
-
-    private static void ChooseKeep()
-    {
-        Plugin.Log.LogInfo("[STEMFishDLC] 玩家选择保留芯片：本层离线，屏蔽器烧毁");
-        SaveSlots.Toast("屏蔽器烧掉了。芯片还在里面。");
-        Close(true);
-    }
-
-    private static Limb FindHead(Body body)
-    {
-        try
-        {
-            var limbs = body.limbs;
-            if (limbs == null) return null;
-            for (int i = 0; i < limbs.Length; i++)
-                if (limbs[i] != null && limbs[i].isHead) return limbs[i];
-        }
-        catch { }
-        return null;
+        try { w.SetUnchipped(WorldGeneration.unchipped); } catch { }
     }
 
     // ==========================================================================
@@ -298,6 +452,8 @@ public static class Jammer
         _item = null;
         _body = null;
         _open = false;
+        _phase = Phase.Idle;
+        _script = null;
 
         if (_root != null) UnityEngine.Object.Destroy(_root);
         _root = null;
@@ -326,55 +482,49 @@ public static class Jammer
 
             _root.AddComponent<GraphicRaycaster>();
 
-            // 遮罩（吃掉所有点击）
-            var dim = NewImage(_root.transform, "Dim", new Color(0f, 0f, 0f, 0.62f));
+            var dim = NewImage(_root.transform, "Dim", new Color(0f, 0f, 0f, 0.72f));
             dim.raycastTarget = true;
 
-            // 面板
             var panel = NewImage(_root.transform, "Panel", new Color(0.055f, 0.070f, 0.085f, 0.985f));
             panel.raycastTarget = true;
             var prt = panel.rectTransform;
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
             prt.pivot = new Vector2(0.5f, 0.5f);
             prt.anchoredPosition = Vector2.zero;
-            prt.sizeDelta = new Vector2(720f, 340f);
+            prt.sizeDelta = new Vector2(760f, 440f);
 
             var bar = NewImage(prt, "Bar", new Color(0.30f, 0.81f, 1.00f, 1f));
-            SetRect(bar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0f), new Vector2(3f, 340f));
+            SetRect(bar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0f), new Vector2(3f, 440f));
 
-            var title = MakeText(prt, "Title", "屏蔽器启动", 26f, new Color(0.87f, 0.92f, 0.94f, 1f));
-            SetRect(title.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -22f), new Vector2(640f, 34f));
+            var title = MakeText(prt, "Title", "第 10 层", 24f, new Color(0.87f, 0.92f, 0.94f, 1f));
+            SetRect(title.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -20f), new Vector2(500f, 32f));
 
-            var sub = MakeText(prt, "Sub",
-                "一阵强噪声淹没了颅内芯片 —— 它现在离线了，不会再给你计时。\n\n" +
-                "要不要趁这段时间把它拆掉？",
-                16f, new Color(0.62f, 0.70f, 0.74f, 1f));
-            sub.enableWordWrapping = true;
-            SetRect(sub.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -66f), new Vector2(664f, 90f));
+            var hint = MakeText(prt, "Hint", "空格 / 左键 跳过", 13f, new Color(0.42f, 0.50f, 0.55f, 1f));
+            hint.alignment = TextAlignmentOptions.TopRight;
+            SetRect(hint.rectTransform, new Vector2(1f, 1f), new Vector2(-28f, -24f), new Vector2(240f, 24f));
 
-            var warn = MakeText(prt, "Warn",
-                "<color=#c98a4a>拆掉：中度脑损伤 + 头部出血，此后永久进入「无芯片」状态。</color>\n" +
-                "<color=#5a6672>不拆：芯片只在本层离线，屏蔽器烧毁。</color>",
-                14f, new Color(0.50f, 0.57f, 0.61f, 1f));
-            warn.enableWordWrapping = true;
-            SetRect(warn.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -160f), new Vector2(664f, 60f));
+            _log = MakeText(prt, "Log", "", 17f, new Color(0.78f, 0.84f, 0.87f, 1f));
+            _log.enableWordWrapping = true;
+            _log.lineSpacing = 6f;
+            SetRect(_log.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -64f), new Vector2(704f, 260f));
 
-            MakeButton(prt, "拆掉芯片", new Vector2(-180f, -124f), new Vector2(300f, 52f),
+            _btnRemove = MakeButton(prt, "拆掉芯片", new Vector2(-180f, -160f), new Vector2(320f, 54f),
                        new Color(0.26f, 0.10f, 0.10f, 1f), new Color(0.95f, 0.62f, 0.58f, 1f), ChooseRemove);
-
-            MakeButton(prt, "留着它", new Vector2(180f, -124f), new Vector2(300f, 52f),
+            _btnKeep = MakeButton(prt, "留着它", new Vector2(180f, -160f), new Vector2(320f, 54f),
                        new Color(0.12f, 0.15f, 0.18f, 1f), new Color(0.62f, 0.70f, 0.74f, 1f), ChooseKeep);
+
+            _btnRemove.SetActive(false);
+            _btnKeep.SetActive(false);
         }
         catch (Exception e)
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] 屏蔽器界面构建失败: {e.Message}");
-            // 界面建不出来也别把玩家锁死：直接按"不拆"处理
             ChooseKeep();
         }
     }
 
-    private static void MakeButton(RectTransform parent, string label, Vector2 pos, Vector2 size,
-                                   Color bg, Color fg, Action onClick)
+    private static GameObject MakeButton(RectTransform parent, string label, Vector2 pos, Vector2 size,
+                                         Color bg, Color fg, Action onClick)
     {
         var go = new GameObject("Btn_" + label, typeof(RectTransform), typeof(Image), typeof(Button));
         var rt = (RectTransform)go.transform;
@@ -407,7 +557,12 @@ public static class Jammer
         trt.offsetMax = Vector2.zero;
         t.alignment = TextAlignmentOptions.Center;
 
-        btn.onClick.AddListener(() => { try { onClick(); } catch (Exception e) { Plugin.Log.LogWarning($"[STEMFishDLC] 屏蔽器按钮出错: {e.Message}"); } });
+        btn.onClick.AddListener(() =>
+        {
+            try { onClick(); }
+            catch (Exception e) { Plugin.Log.LogWarning($"[STEMFishDLC] 屏蔽器按钮出错: {e.Message}"); }
+        });
+        return go;
     }
 
     private static Image NewImage(Transform parent, string name, Color c)

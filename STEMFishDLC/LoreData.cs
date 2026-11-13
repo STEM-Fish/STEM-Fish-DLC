@@ -41,6 +41,7 @@ public static class LoreData
         public int noteLayer;      // noteLater 解锁所需层数（biomeDepth >= 这个值才显示）
         public string sprite;
         public bool autoUnlock;    // true = 终端里本来就有（不消耗世界投放名额）
+        public int layer;          // 该在哪一层解锁（0 = 不绑定，退回“下一篇未读”）
     }
 
     private class FileRoot
@@ -131,6 +132,17 @@ public static class LoreData
         foreach (var e in _entries)
             if (!e.autoUnlock && !_read.Contains(e.id)) return e;
         return null;
+    }
+
+    // 按层解锁：优先取「layer == 当前层」的未读条目；
+    // 该层没配（老存档 / 改过 json）就退回“下一篇未读”，永远不会卡住进度。
+    public static Entry UnlockForDepth(int depth)
+    {
+        EnsureLoaded();
+        if (TutorialMode) return null;
+        foreach (var e in _entries)
+            if (!e.autoUnlock && !_read.Contains(e.id) && e.layer == depth) return e;
+        return NextUnread();
     }
 
     // ==========================================================================

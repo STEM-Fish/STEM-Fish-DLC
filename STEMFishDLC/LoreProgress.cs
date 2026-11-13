@@ -63,7 +63,7 @@ public static class LoreProgress
         if (depth <= _lastDepth) return;
         _lastDepth = depth;
 
-        var e = LoreData.NextUnread();
+        var e = LoreData.UnlockForDepth(depth);
         if (e == null)
         {
             if (_loggedDepth != depth)
