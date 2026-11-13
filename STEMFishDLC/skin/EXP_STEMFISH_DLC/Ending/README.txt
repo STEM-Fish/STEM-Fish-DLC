@@ -5,8 +5,8 @@
 规则和 Loading/ 完全一样
 ------------------------
 
-**PNG 文件名 = 游戏里的 sprite 名**，把文件放在**上一层**（Ending/）就会生效；
-放在 _reference/ 里只是参考图，不生效。
+**PNG 文件名 = 游戏里的 sprite 名**，放在本目录（Ending/）就会生效；
+放在 _reference/ 里只是参考图，不生效（想改哪张就从 _reference/ 复制到上一层再画）。
 
 程序挂的是 `Image.sprite` 和 `SpriteRenderer.sprite` 两个赋值钩子：
 结局过场是全屏 UGUI Image，实验室里的科学家是世界里的 SpriteRenderer，
