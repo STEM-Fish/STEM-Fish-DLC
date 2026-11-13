@@ -423,16 +423,23 @@ public static class ItemRegistry
             if (Item.GlobalItems == null) return;
             foreach (var it in Items)
             {
+                // ★ 顺序很重要：先把内置文案登记进 ItemText，再让 ItemText 决定最终文本（json 优先），
+                //   最后写进 ItemInfo。游戏 UI 显示的是 **ItemInfo.fullName / description**，
+                //   不是 Locale —— 之前只塞 FishLocalization，所以改 items.zh-CN.json 游戏里看不到。
+                ItemText.SetBuiltin(it.id, it.displayName, it.description);
+                string finalName = ItemText.Name(it.id) ?? it.displayName;
+                string finalDesc = ItemText.Desc(it.id) ?? it.description;
+
                 var info = BuildInfo(it);
+                info.fullName = finalName;
+                info.description = finalDesc;
                 Item.GlobalItems[it.id] = info;
                 // 兼容旧存档：v0.4.0 把 "mdr" 改名成 "mdrz9"，老物品仍要有 ItemInfo（否则 KeyNotFound）
                 if (it.id == "mdrz9" && !Item.GlobalItems.ContainsKey("mdr")) Item.GlobalItems["mdr"] = info;
-                // 显示名/描述（游戏查不到 key 时由 FishLocalization 补位）
-                // 文本：先登记内置文案，再由 ItemText 决定最终用哪一份（JSON 优先）
-                ItemText.SetBuiltin(it.id, it.displayName, it.description);
-                FishLocalization.Register(it.id, ItemText.Name(it.id) ?? it.displayName,
-                                                    ItemText.Desc(it.id) ?? it.description);
-                Plugin.Log.LogInfo($"[STEMFishDLC] 注册物品: {it.id} ({it.displayName})");
+
+                // 顺带塞进 Locale 补位（有些 UI 走 Locale.GetString）
+                FishLocalization.Register(it.id, finalName, finalDesc);
+                Plugin.Log.LogInfo($"[STEMFishDLC] 注册物品: {it.id} ({finalName})");
             }
 
             // 物品名/描述的外部文本表（plugins/STEMFishDLC/items.zh-CN.json）

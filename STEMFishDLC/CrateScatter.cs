@@ -43,8 +43,24 @@ public static class CrateScatter
         {
             Enabled = plugin.Config.Bind("Loot", "ScatterAmmoBoxes", true,
                 "每层在世界里撒几个弹药箱（关掉就只能靠打碎物资箱/商人碰运气）").Value;
-            CountPerLayer = Mathf.Clamp(plugin.Config.Bind("Loot", "AmmoBoxPerLayer", 14,
-                "每层撒多少个弹药箱（0 = 不撒，上限 60）").Value, 0, 60);
+            var ammoEntry = plugin.Config.Bind("Loot", "AmmoBoxPerLayer", 17,
+                "每层撒多少个弹药箱（0 = 不撒，上限 60）");
+            CountPerLayer = Mathf.Clamp(ammoEntry.Value, 0, 60);
+
+            // v0.18.11：默认 14 → 17（老 cfg 里存的 14 一次性迁移）
+            try
+            {
+                var mk = plugin.Config.Bind("Loot", "AmmoCountMigrated", false,
+                    "内部标记：弹药箱每层数量是否已从 14 升到 17，别手动改");
+                if (!mk.Value && CountPerLayer == 14)
+                {
+                    ammoEntry.Value = 17;
+                    CountPerLayer = 17;
+                    Plugin.Log.LogInfo("[STEMFishDLC] 弹药箱每层数量：14 → 17（一次性迁移）");
+                }
+                mk.Value = true;
+            }
+            catch { }
             MinSpacing = Mathf.Clamp(plugin.Config.Bind("Loot", "AmmoBoxMinSpacing", 10f,
                 "两个弹药箱之间的最小距离（世界单位），防止挤成一堆").Value, 2f, 40f);
             Margin = Mathf.Clamp(plugin.Config.Bind("Loot", "AmmoBoxMargin", 8f,

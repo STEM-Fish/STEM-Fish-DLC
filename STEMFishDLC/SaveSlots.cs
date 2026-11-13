@@ -444,6 +444,7 @@ public static class SaveSlots
             if (File.Exists(DataPath(id))) File.Delete(DataPath(id));
             if (File.Exists(LorePath(id))) File.Delete(LorePath(id));
             if (File.Exists(MetaPath(id))) File.Delete(MetaPath(id));
+            if (File.Exists(MapSave.PathFor(id))) File.Delete(MapSave.PathFor(id));
             if (_current == id) SetCurrent(null);
             Plugin.Log.LogInfo($"[STEMFishDLC] 存档已删除：{id}");
             return true;
@@ -493,6 +494,9 @@ public static class SaveSlots
             m.savedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             m.mod = ModState.Version;
             WriteMeta(_current, m);
+
+            // 地图 + 角色坐标（原版 save.sv 里没有，单独存 <id>.map）
+            MapSave.Save(_current);
             return true;
         }
         catch (Exception e)
@@ -587,6 +591,7 @@ public static class SaveSlots
     // 新的一局：先建槽（命名），再应用模式、开局
     public static bool CreateAndStart(RunConfig.Difficulty d, string name)
     {
+        MapSave.Cancel();
         string id = CreateSlot(name, d);
         if (id == null) return false;
 
@@ -603,6 +608,7 @@ public static class SaveSlots
     public static bool StartNoSlot(RunConfig.Difficulty d)
     {
         SetCurrent(null);
+        MapSave.Cancel();
         if (!RunConfig.Apply(d)) return false;
         RunConfig.BeginRun();
         return true;
@@ -664,6 +670,10 @@ public static class SaveSlots
         {
             Plugin.Log.LogInfo($"[STEMFishDLC] 载入存档「{m.name}」" +
                                $"（{m.modeLabel} 第 {m.depth} 层 · {TimeText(m.runTime)}）");
+
+            // 地图存档先读进内存，等新世界生成完由 MapSave.Tick 写回
+            MapSave.Prepare(id);
+
             pre.LoadRun();
             return true;
         }

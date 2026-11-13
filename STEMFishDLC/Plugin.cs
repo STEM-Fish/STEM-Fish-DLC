@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.18.10")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.18.11")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.18.10 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.18.11 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -78,6 +78,7 @@ public class Plugin : BaseUnityPlugin
         RunConfig.Init(this);       // 开局难度（含动态刷怪 SpawnDirector）
         NewRunPanel.Init(this);     // 我们自己的投放（难度）界面
         SaveSlots.Init(this);       // 命名多存档（槽位 + 存档点自动存档 + 存档键）
+        MapSave.Init(this);         // 存档：把本层地图与角色坐标一起存下来
         LoreProgress.Init(this);    // 档案：每下一层自动解锁一篇
         LoreData.Init(this);        // 档案：进度绑定存档 + 教程全解锁
         HypeMode.Init(this);        // 急速下坠：击杀回心情
@@ -167,6 +168,7 @@ public class Plugin : BaseUnityPlugin
         Safe(NewRunPanel.Tick);         // 主菜单：我们自己的投放（难度）界面
         Safe(SpawnDirector.Tick);       // 世界内：按难度持续投放敌对生物
         Safe(SaveSlots.Tick);           // 存档键 + 存档点自动存档（暂停时也要能存）
+        Safe(MapSave.Tick);             // 读档后等世界生成完，写回地图 + 传送角色
         Safe(Jammer.Tick);              // 屏蔽器：没拆的话，下一层恢复芯片
 
         // 暂停时不吃热键（面板开关也交给游戏自己的暂停菜单）

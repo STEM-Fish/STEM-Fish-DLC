@@ -151,6 +151,8 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 | `HudButton.cs` | 左下角「战术面板」按钮 |
 | `ModMenu.cs` | MOD 管理面板：模块开关 / 热键 / 存档（含重命名、删除、立即存档） | 关闭必须 `_root.SetActive(false)`，只关 Panel 会留下吃点击的遮罩 |
 | `NewRunPanel.cs` | 进入游戏界面（盖住原版难度页）：**左栏模式卡片 + 右栏存档列表（载入/改名/删除）**，选模式会弹「给存档起名」 | 显示条件靠 `AdaptiveButton.Clicked` 的 action==0，不靠猜 prefab 状态；急速下坠跳过命名、不建槽 |
+| `MapSave.cs` | 存档补充地图与站位：保存 `WorldGeneration.worldBlocks`（`ushort[宽,高]`）+ 宽高 + 层号 + 角色坐标，gzip 成 `<槽位>.map`；读档时先读进内存，等 `timeSinceFinishedGeneration>0.5` 且 `body` 就位、层号匹配后整份写回，按 `CHUNKSIZE` 分块 `Tilemap.SetTiles` 批量刷新，再把 Body 和镜头瞬移过去 | 逐格 `SetBlock` 会卡好几秒；必须校验"换了新的 WorldGeneration 实例"，否则读档失败会把当前地图覆盖掉 |
+| `MapSave.cs` | 存档补充地图与站位：保存 `WorldGeneration.worldBlocks`（`ushort[宽,高]`）+ 宽高 + 层号 + 角色坐标，gzip 成 `<槽位>.map`；读档时先读进内存，等 `timeSinceFinishedGeneration>0.5` 且 `body` 就位、层号匹配后整份写回，按 `CHUNKSIZE` 分块 `Tilemap.SetTiles` 批量刷新，再把 Body 和镜头瞬移过去 | 逐格 `SetBlock` 会卡好几秒；必须校验"换了新的 WorldGeneration 实例"，否则读档失败会把当前地图覆盖掉 |
 | `SaveSlots.cs` | 命名多存档：游戏只有单槽 `save.sv`，我们在外面包一层 `persistentDataPath/STEMFishDLC_Saves/<id>.sv|.lore|.json`。挂 `SaveSystem.SaveGame` 后置（Priority.Last）自动同步；层底存档点打开时自动存档；`F4` 手动存档；载入 = 复制回 `save.sv(+.lore)` 再 `PreRunScript.LoadRun()` | 自定义物品读档要拦 `Resources.Load(string)` 返回内存模板（原版 TryLoadGame 只认 Resources，拿不到就丢物品）；写档前把 `body.forceWalk` 压掉 |
 | `HealthPanel.cs` | 健康面板：姓名 STEM-Fish / 身高 171 / 编号 #AAA01 + 绿色转天蓝 |
 | `HealthDoll.cs` | 右上角人体图（一张 `doll_atlas.png` → 16 个区域 / 15 个部位 + 尾巴）；染色 **灰白 → 淡卡其 → 琥珀 → 橙红 → 红**（健康端不用绿色），满血整体 38% 透明，出血按量闪 |
@@ -327,7 +329,7 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 | `[Combat]` | `YellowBlood` / `Knockback` / `KnockbackPower`14 / `MinDamage`0.5 / `CoverArmor`（贴皮衣物分部位护甲开关）/ `CoatArmor`0.25 `PantsArmor`0.20 `BootsArmor`0.30（**除数**：伤害÷(1+值)）/ `KnockbackPower` |
 | `[Items]` | `Jammer` 屏蔽器开关 / `JammerLoot`（像普通物品一样出现在商人·物资箱·尸体，默认开）/ `JammerWeight`2 |
 | `[Hype]` | 急速下坠击杀回心情（`KillHappiness` 默认 **12**，无上限）/ 命中特效倍率 |
-| `[Save]` | `Enabled` 多存档总开关 / `AutoSaveAtCheckpoint` 存档点自动存档 / `SaveKey` 局内存档键（默认 `F4`） |
+| `[Save]` | `SaveMap` 地图+坐标随存档保存（默认开）/ `Enabled` 多存档总开关 / `AutoSaveAtCheckpoint` 存档点自动存档 / `SaveKey` 局内存档键（默认 `F4`） |
 | `[Skin]` | 皮肤包名 / 立绘适配 `MenuAutoLayout`、`MenuOutlineRadius`、`MenuTextOffsetX/Y` |
 | `[HUD]` | 人体图缩放（`HealthDollScaleV2` 默认 0.8）/位置、健康面板配色、`WeaponHudScale`1.12、`TerminalScale`1.15 |
 
