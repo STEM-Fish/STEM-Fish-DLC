@@ -2,6 +2,24 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.19.0 — 2026-11-13
+
+- **主角体型等比放大**：新增 `BodyScale`，缩放 `Body.transform.localScale`（默认 ×1.15）。
+  原版玩家结构是 `Dune/Milky → Body（物理 ragdoll 骨架）→ 各肢体` + 同级屏幕外 `Anim` 动画骨骼，
+  `Body.HandleVisuals` 每帧把 `Anim` 的姿势写进肢体的 localPosition —— 所以缩放 Body 就是
+  **骨架 / 贴图 / 碰撞箱 / 关节一起等比放大**，身高和肩宽同比例，不是把贴图纵向拉长。
+  保留 `localScale.x` 的符号：原版 `Body.SwitchDir` 用 ±x 表示朝向，写死正数会把转身掰回来
+- **开局力量/韧性下调**：`[Skills]` STR/RES 18/16 → **12/12**（原版 EXPie 是 9/8），INT 仍 18。
+  带一次性迁移（老 cfg 里等于 18/16 的才改，自己调过的保留）
+- **同等力量下背得更多**：新增 `PlayerCarry`，挂 `Body.HandlePeriodicChecks` 的 prefix+postfix，
+  只对 `PlayerCamera.main.body` 把 `maxEncumberance` 乘 `[Skills] CarryMult`（默认 1.4）并重算
+  `overEncumberance`。原版公式是
+  `(11 + Clamp(weightOffset+15,-60,0)*0.1 - sickness*0.025 ± 饥渴修正 + Min(STR-10,RES-10)*0.5 + (STR-10)*0.5) * encumbrancecap`，
+  所以 STR12/RES12 时是 13 × 倍率，EXPie 的 STR9/RES8 只有 9.5
+  ⚠ 原版那段是 `if (halfSecondCheckTime > 0.5)` 才执行，postfix 必须比对"这次是否真的重算过"，
+  否则每帧乘一次会让上限指数爆炸（已用 prefix 记录前值判断）
+- 日志新增一行 `负重：x / y（zz%）`，开局负不负重一眼能看出来
+
 ## 0.18.12 — 2026-11-13
 
 - **修：读档会往下跳一层（第 11 层存档读进去直接到结局层）**

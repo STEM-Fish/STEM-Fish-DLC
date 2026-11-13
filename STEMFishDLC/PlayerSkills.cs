@@ -27,18 +27,21 @@ public static class PlayerSkills
 {
     public static bool Enabled = true;
     // 原版新档实测：力量 9 / 耐力 8 / 智力 7（不是 3~4，早期日志看错了）
-    // 军事线选育支系 + 战术训练 → 三项都明显高于野生同类，智力给得最多
-    // v0.13.6 再抬一档：作者反馈开局仍容易严重负重，负重主要吃 STR
-    public static int STR = 18;
-    public static int RES = 16;
+    // v0.13.6 曾把 STR/RES 抬到 18/16 来缓解开局严重负重；
+    // v0.19.0 按作者要求改回来：**STR / RES 下调到 12**，负重靠
+    //   PlayerCarry 的「同等力量多背 40%」补上（比硬拉力量更符合设定）。
+    // 智力保持 18：配方可见性 / 物品识别都靠它，和体型力量无关。
+    public static int STR = 12;
+    public static int RES = 12;
     public static int INT = 18;
 
     private static bool _want;
     private static bool _done;
 
-    // 旧版本留在 cfg 里的 14/13/15 会被 Bind 原样读回来，光改默认值没用。
-    // 这里做一次性迁移：只往上抬，不往下压（玩家自己设得更高就保留）。
-    private const int NewSTR = 18, NewRES = 16, NewINT = 18;
+    // 旧版本留在 cfg 里的 18/16/18 会被 Bind 原样读回来，光改默认值没用。
+    // 迁移分两步：先抬到 18/16/18（v0.13.6），再按 v0.19.0 下调到 12/12/18。
+    private const int NewSTR = 12, NewRES = 12, NewINT = 18;
+    private const int OldSTR = 18, OldRES = 16;
 
     public static void Init(Plugin plugin)
     {
@@ -48,7 +51,7 @@ public static class PlayerSkills
                 "新开一局时把玩家初始技能拉到下面的数值（读档不改）").Value;
 
             var eStr = plugin.Config.Bind("Skills", "STR", NewSTR,
-                "初始力量（负重/击退/近战）。原版新档实测 9");
+                "初始力量（负重/投掷/近战）。原版新档实测 9");
             var eRes = plugin.Config.Bind("Skills", "RES", NewRES,
                 "初始耐力（体力/奔跑）。原版新档实测 8");
             var eInt = plugin.Config.Bind("Skills", "INT", NewINT,
@@ -59,14 +62,30 @@ public static class PlayerSkills
             if (!migrated)
             {
                 int o1 = eStr.Value, o2 = eRes.Value, o3 = eInt.Value;
-                if (eStr.Value < NewSTR) eStr.Value = NewSTR;
-                if (eRes.Value < NewRES) eRes.Value = NewRES;
+                if (eStr.Value < OldSTR) eStr.Value = OldSTR;
+                if (eRes.Value < OldRES) eRes.Value = OldRES;
                 if (eInt.Value < NewINT) eInt.Value = NewINT;
                 plugin.Config.Bind("Skills", "MigratedTo18", false,
                     "（内部）技能默认值迁移标记，不要手改").Value = true;
                 try { plugin.Config.Save(); } catch { }
                 Plugin.Log.LogInfo($"[STEMFishDLC] 初始技能默认值已迁移: " +
                                    $"{o1}/{o2}/{o3} → {eStr.Value}/{eRes.Value}/{eInt.Value}");
+            }
+
+            // v0.19.0：把上一版写进 cfg 的 18/16 下调到 12。
+            // 只有"还是上一版默认值"时才改，作者自己调过的数值保留。
+            bool migrated2 = plugin.Config.Bind("Skills", "MigratedTo12", false,
+                "（内部）技能下调迁移标记，不要手改").Value;
+            if (!migrated2)
+            {
+                int o1 = eStr.Value, o2 = eRes.Value;
+                if (eStr.Value == OldSTR) eStr.Value = NewSTR;
+                if (eRes.Value == OldRES) eRes.Value = NewRES;
+                plugin.Config.Bind("Skills", "MigratedTo12", false,
+                    "（内部）技能下调迁移标记，不要手改").Value = true;
+                try { plugin.Config.Save(); } catch { }
+                Plugin.Log.LogInfo($"[STEMFishDLC] 初始技能已下调（负重改由倍率承担）: " +
+                                   $"力量 {o1}→{eStr.Value} / 耐力 {o2}→{eRes.Value}");
             }
 
             STR = Mathf.Clamp(eStr.Value, 1, 40);
