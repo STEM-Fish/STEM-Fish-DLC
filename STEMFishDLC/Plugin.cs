@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.20.0")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.20.1")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.20.0 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.20.1 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -102,6 +102,8 @@ public class Plugin : BaseUnityPlugin
         CombatFeel.Init(this);      // 战斗手感：黄血 + 小型生物击退
         CoverArmor.Init(this);      // 贴皮衣物按部位给护甲
         Jammer.Init(this);          // 剧情道具「屏蔽器」（第 10 层定身 + 拆/留芯片）
+        TraderTalk.Init(this);      // 商人：买走屏蔽器时补一句台词
+        ItemSettle.Init(this);      // 战利品落点修补（埋在岩层/悬空的箱子挪回地面）
         BloodRed.Init(this);        // 主角的血改成红色（肢体血渍 + 流血粒子）
         CursorFeature.Init(this);   // 内置准星替换（原 STEM_Fish_MOD 并入）
 
@@ -174,6 +176,7 @@ public class Plugin : BaseUnityPlugin
         Safe(MapSave.Tick);             // 读档后等世界生成完，写回地图 + 传送角色
         Safe(Jammer.Tick);              // 屏蔽器：第 10 层触发定身与拆/留抉择
         Safe(BloodRed.Tick);            // 红血：肢体血渍 / 流血粒子 / 墙地血渍
+        Safe(ItemSettle.Tick);          // 战利品落点修补（尸体旁拿不到的弹药箱）
 
         // 暂停时不吃热键（面板开关也交给游戏自己的暂停菜单）
         if (IsPaused) return;

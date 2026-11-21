@@ -246,7 +246,7 @@ public static class ItemRegistry
             description = "来路不明的应急屏蔽器，外壳上没有任何厂牌和编号。启动后能像太阳耀斑一样把颅内芯片压掉，并给你一次拆掉它的机会。",
             category = "utility",
             weight = 0.6f,
-            value = 180,
+            value = 20,                 // 商人的标准价（ItemPrice ≈ value × 声望曲线，落在 10~30）
             stripContainer = true,
             useAction = Jammer.Use,
         },
@@ -930,8 +930,13 @@ public static class ItemRegistry
         var go = item.gameObject;
         go.name = id + "_loadprefab";
 
+        // ⚠ 这里**不能**把 rb.simulated 设成 false：原版 `CorpseScript.Start` 是
+        //   `Instantiate(Resources.Load(id), 尸体位置 + (随机x, +3))`，克隆体会**连这个字段一起复制**
+        //   → 尸体旁掉出来的箱子永远冻在半空（常在 3 格高的洞顶里），而
+        //   `Body.DoPickupCheck` 要求"物品碰撞体中心不在 Ground 里" → 右键没反应。
+        //   只把速度清零就够：模板同一帧就会被 Instantiate + Destroy，不会掉走。
         var rb = go.GetComponent<Rigidbody2D>();
-        if (rb != null) { rb.simulated = false; rb.velocity = Vector2.zero; rb.angularVelocity = 0f; }
+        if (rb != null) { rb.velocity = Vector2.zero; rb.angularVelocity = 0f; }
 
         // ★ 用完就 Destroy（帧末生效）：原版紧接着会 Instantiate 它，克隆体不受影响。
         //   不能长期留着当模板 —— Item.Update 会对世界外的坐标算 GetClosestChunkRenderer()，
