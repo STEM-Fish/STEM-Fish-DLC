@@ -42,6 +42,19 @@ public static class LoreData
         public string sprite;
         public bool autoUnlock;    // true = 终端里本来就有（不消耗世界投放名额）
         public int layer;          // 该在哪一层解锁（0 = 不绑定，退回“下一篇未读”）
+        public List<Variant> variants;   // 按「芯片状态」分支的正文/批注（没有就整篇同一个版本）
+    }
+
+    // 同一篇档案的不同版本。when 只认三个值：
+    //   unchipped —— 芯片已拆
+    //   declined  —— 有屏蔽器但选择了「留」
+    //   none      —— 没拿到屏蔽器（或没走到抉择）
+    public class Variant
+    {
+        public string when;
+        public string body;
+        public string note;
+        public string noteLater;
     }
 
     private class FileRoot
@@ -89,13 +102,58 @@ public static class LoreData
         return _entries.Find(e => e.id == id);
     }
 
+    // 当前芯片状态：unchipped / declined / none
+    //  - 游戏自己的「未植入芯片」预设也算 unchipped
+    //  - Jammer 在弹出抉择面板时就把 declined 写上（真拆了会被 unchipped 盖掉）
+    public static string ChipState()
+    {
+        try { if (WorldGeneration.unchipped) return "unchipped"; } catch { }
+        try
+        {
+            var rs = WorldGeneration.runSettings;
+            if (rs != null && rs.ContainsKey("stemfish_jammer_declined")) return "declined";
+        }
+        catch { }
+
+        // 还揣着屏蔽器 = 至少还没拆（也覆盖"刚进第 10 层、面板还没弹出来"的那几秒）
+        try
+        {
+            var b = PlayerCamera.main != null ? PlayerCamera.main.body : null;
+            Item it = null;
+            if (b != null && b.FindByIdThorough(Jammer.Id, out it) && it != null) return "declined";
+        }
+        catch { }
+        return "none";
+    }
+
+    private static Variant PickVariant(Entry e)
+    {
+        if (e == null || e.variants == null || e.variants.Count == 0) return null;
+        var st = ChipState();
+        for (int i = 0; i < e.variants.Count; i++)
+            if (e.variants[i] != null && e.variants[i].when == st) return e.variants[i];
+        return null;
+    }
+
+    // 正文（有对应变体就用变体的）
+    public static string BodyFor(Entry e)
+    {
+        var v = PickVariant(e);
+        if (v != null && !string.IsNullOrEmpty(v.body)) return v.body;
+        return e != null ? e.body : "";
+    }
+
     // 当前层能看到的批注（后补的部分要下到对应层才出现；教程模式全给）
     public static string NoteFor(Entry e)
     {
         if (e == null) return "";
+        var v = PickVariant(e);
+        string baseNote = (v != null && !string.IsNullOrEmpty(v.note)) ? v.note : e.note;
+        string lateNote = (v != null && !string.IsNullOrEmpty(v.noteLater)) ? v.noteLater : e.noteLater;
+
         var sb = new System.Text.StringBuilder();
-        if (!string.IsNullOrEmpty(e.note)) sb.Append(e.note);
-        if (!string.IsNullOrEmpty(e.noteLater))
+        if (!string.IsNullOrEmpty(baseNote)) sb.Append(baseNote);
+        if (!string.IsNullOrEmpty(lateNote))
         {
             bool show = TutorialMode;
             if (!show)
@@ -108,7 +166,7 @@ public static class LoreData
             if (show)
             {
                 if (sb.Length > 0) sb.Append("\n\n");
-                sb.Append(e.noteLater);
+                sb.Append(lateNote);
             }
         }
         return sb.ToString();
@@ -162,7 +220,8 @@ public static class LoreData
                 {
                     _entries.Clear();
                     foreach (var e in root.logs)
-                        if (e != null && !string.IsNullOrEmpty(e.id) && !string.IsNullOrEmpty(e.body))
+                        if (e != null && !string.IsNullOrEmpty(e.id) &&
+                            (!string.IsNullOrEmpty(e.body) || (e.variants != null && e.variants.Count > 0)))
                             _entries.Add(e);
                 }
             }
@@ -364,7 +423,7 @@ public static class LoreData
             // 终端「归档」页（DlcPanel.ShowCodexEntry 自己摆 Image）。
             var sprites = LoadSprites(e);
 
-            ScrollableText.CreateText(e.body, false, sprites, DlcPanel.Font);
+            ScrollableText.CreateText(BodyFor(e), false, sprites, DlcPanel.Font);
 
             // 扫完之后的一句——按扫描对象类型取，说的是"他刚看完这个"而不是"关于这个"
             SayAfterScan(e);

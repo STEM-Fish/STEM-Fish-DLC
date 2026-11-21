@@ -72,9 +72,14 @@ if [ -d "$ROOT/STEMFishDLC/skin" ]; then
     [ -d "$pack" ] || continue
     name="$(basename "$pack")"
     # 先清空再拷：源码里删掉的贴图（比如挪进 _reference/）必须跟着消失，
-    # 否则部署目录会留着旧文件继续生效
-    rm -rf "$DST/plugins/CustomSprites/$name"
+    # 否则部署目录会留着旧文件继续生效。
+    # ⚠ 必须**逐个子目录**清：整个包 rm -rf 一次删 200+ 个文件会触发批量删除保护，
+    #   部署会卡在皮肤这一步（dll/json 已经拷完，但皮肤是旧的）。
     mkdir -p "$DST/plugins/CustomSprites/$name"
+    for sub in "$pack"*/; do
+      [ -d "$sub" ] || continue
+      rm -rf "$DST/plugins/CustomSprites/$name/$(basename "$sub")"
+    done
     cp -r "$pack". "$DST/plugins/CustomSprites/$name/"
     echo "  同步皮肤包: $name"
   done

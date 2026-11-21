@@ -886,7 +886,7 @@ public static class DlcPanel
         if (!string.IsNullOrEmpty(entry.subtitle))
             sb.Append("<size=14><color=#5a6672>").Append(entry.subtitle).Append("</color></size>\n\n");
         // 正文整体丢进 noparse：正文里可能有 < > 之类会被 TMP 当成标签
-        sb.Append("<size=17><color=#c8d4d4><noparse>").Append(entry.body).Append("</noparse></color></size>");
+        sb.Append("<size=17><color=#c8d4d4><noparse>").Append(LoreData.BodyFor(entry)).Append("</noparse></color></size>");
 
         // 主角批注：和原文并列，靠一条竖线分隔（永远是"另一个人的声音"）
         // ★ 后补的部分（noteLater）要下到对应层才出现，避免第 1 层就看到"第 3 层补记"

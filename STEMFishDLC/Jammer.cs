@@ -185,6 +185,15 @@ public static class Jammer
         _line = 0;
         _nextAt = Time.unscaledTime + 0.5f;
 
+        // 给档案用的状态位：抉择一旦开始就算「没拆」，
+        // 真拆了会被 WorldGeneration.unchipped 盖掉（LoreData.ChipState 先判 unchipped）。
+        try
+        {
+            if (WorldGeneration.runSettings != null)
+                WorldGeneration.runSettings["stemfish_jammer_declined"] = true;
+        }
+        catch { }
+
         if (withLines)
         {
             _script = FishVoice.Sequence("jammer");
@@ -311,6 +320,7 @@ public static class Jammer
             }
             catch (Exception e) { Plugin.Log.LogWarning($"[STEMFishDLC] 写入无芯片设置失败: {e.Message}"); }
 
+            try { if (WorldGeneration.runSettings != null) WorldGeneration.runSettings.Remove("stemfish_jammer_declined"); } catch { }
             Plugin.Log.LogInfo("[STEMFishDLC] 芯片已拆除：脑损伤 + 头部出血，永久无芯片模式");
             SaveSlots.Toast("芯片拆掉了。从现在起，没人给你计时了。");
         }
