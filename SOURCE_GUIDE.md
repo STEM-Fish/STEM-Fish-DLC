@@ -430,6 +430,6 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 
 ## 8. 版本
 
-当前 **v0.20.0**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
+当前 **v0.21.1**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
 
 主要里程碑见 `.workbuddy/memory/` 下的日志。

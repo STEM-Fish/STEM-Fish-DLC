@@ -18,7 +18,7 @@ namespace STEMFishDLC;
 //
 //  刷新：
 //    ① `CrateScatter` 负责真正的地图生成（每层撒 N 个，见那个文件）
-//    ② 这里额外把 id 塞进 ItemLootPool.pool，让它也能出现在**商人货架**和
+//    ② 这里额外把 id 塞进 ItemLootPool.pool，让它也能出现在**商人出售的物品**和
 //       **打碎物资箱的掉落表**里（BuildingEntity.itemCategoriesToAdd → pool[category]）。
 //       ⚠ 池子**不会**让物资箱里多出物品 —— 那个池只被
 //       TraderScript.GenerateSingleItemList 和 BuildingEntity 的掉落逻辑消费，

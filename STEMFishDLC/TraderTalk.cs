@@ -13,7 +13,7 @@ namespace STEMFishDLC;
 //  只对 `jammer` 生效 —— Talker.Talk 是"换气泡内容"，所以玩家看到的是我们这句。
 //
 //  为什么用 postfix 而不是 prefix：prefix 时还不知道买没买成（钱不够会 return）。
-//  prefix 只记一件事：这件货在不在货架上；postfix 发现它被 `items.Remove` 了，
+//  prefix 只记一件事：这件货还在不在商人的存货里；postfix 发现它被 `items.Remove` 了，
 //  就说明成交了（原版流程：扣钱 → 说话 → items.Remove → 生成物品）。
 // ============================================================================
 

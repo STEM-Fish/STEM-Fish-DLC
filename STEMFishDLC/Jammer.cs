@@ -65,7 +65,7 @@ public static class Jammer
             Enabled = plugin.Config.Bind("Items", "Jammer", true,
                 "启用「屏蔽器」（第 10 层的拆芯片抉择）").Value;
             LootEnabled = plugin.Config.Bind("Items", "JammerLoot", true,
-                "屏蔽器像普通物品一样出现在战利品里（商人货架 / 打碎的物资箱 / 尸体遗留）").Value;
+                "屏蔽器像普通物品一样出现在战利品里（商人出售的物品 / 打碎的物资箱 / 尸体遗留）").Value;
             LootWeight = Mathf.Clamp(plugin.Config.Bind("Items", "JammerWeight", 2,
                 "屏蔽器在战利品池里的权重（1 = 很稀有，5 = 常见；上限 20）").Value, 1, 20);
             TriggerDepth = Mathf.Clamp(plugin.Config.Bind("Items", "JammerDepth", 10,
@@ -96,7 +96,7 @@ public static class Jammer
         if (w == null || depth != TriggerDepth)
         {
             // 不可用：既不消耗也不打开界面（走完第 10 层它就彻底没用了）
-            SaveSlots.Toast("没有反应。它的电池早就凉了。");
+            SaveSlots.Toast("没有反应。它只对一层有效，而这里不是那一层。");
             Plugin.Log.LogInfo($"[STEMFishDLC] 屏蔽器：当前层 {depth} 不是可用层，无反应");
             return;
         }
@@ -212,8 +212,8 @@ public static class Jammer
         if (withLines) SetLog("");
         else
         {
-            SetLog("<color=#c9d3d8>屏蔽器还在兜里。</color>\n\n" +
-                   "芯片还埋在后颈。它现在离你只有一层皮的深度 —— 要走，就趁现在。");
+            SetLog("<color=#c9d3d8>屏蔽器还在兜里，凉的。</color>\n\n" +
+                   "芯片还埋在后颈，离你只有一层皮的深度；你还能再按一次，可这一层不会等你太久。");
             ShowButtons();
         }
     }
@@ -362,7 +362,7 @@ public static class Jammer
     }
 
     // ==========================================================================
-    //  战利品池注入（商人货架 / 打碎的箱子 / 尸体遗留）
+    //  战利品池注入（商人出售的物品 / 打碎的箱子 / 尸体遗留）
     // ==========================================================================
     private static void InjectPool()
     {
@@ -501,10 +501,10 @@ public static class Jammer
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
             prt.pivot = new Vector2(0.5f, 0.5f);
             prt.anchoredPosition = Vector2.zero;
-            prt.sizeDelta = new Vector2(760f, 440f);
+            prt.sizeDelta = new Vector2(860f, 620f);
 
             var bar = NewImage(prt, "Bar", new Color(0.30f, 0.81f, 1.00f, 1f));
-            SetRect(bar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0f), new Vector2(3f, 440f));
+            SetRect(bar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0f), new Vector2(3f, 620f));
 
             var title = MakeText(prt, "Title", "第 10 层", 24f, new Color(0.87f, 0.92f, 0.94f, 1f));
             SetRect(title.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -20f), new Vector2(500f, 32f));
@@ -516,11 +516,11 @@ public static class Jammer
             _log = MakeText(prt, "Log", "", 17f, new Color(0.78f, 0.84f, 0.87f, 1f));
             _log.enableWordWrapping = true;
             _log.lineSpacing = 6f;
-            SetRect(_log.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -64f), new Vector2(704f, 260f));
+            SetRect(_log.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -70f), new Vector2(804f, 420f));
 
-            _btnRemove = MakeButton(prt, "拆掉芯片", new Vector2(-180f, -160f), new Vector2(320f, 54f),
+            _btnRemove = MakeButton(prt, "拆掉芯片", new Vector2(-190f, -250f), new Vector2(340f, 56f),
                        new Color(0.26f, 0.10f, 0.10f, 1f), new Color(0.95f, 0.62f, 0.58f, 1f), ChooseRemove);
-            _btnKeep = MakeButton(prt, "留着它", new Vector2(180f, -160f), new Vector2(320f, 54f),
+            _btnKeep = MakeButton(prt, "留着它", new Vector2(190f, -250f), new Vector2(340f, 56f),
                        new Color(0.12f, 0.15f, 0.18f, 1f), new Color(0.62f, 0.70f, 0.74f, 1f), ChooseKeep);
 
             _btnRemove.SetActive(false);
