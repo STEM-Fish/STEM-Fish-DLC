@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using BepInEx;
+using UnityEngine;
 
 namespace STEMFishDLC;
 
@@ -65,7 +66,19 @@ public static class Lang
         try
         {
             string n = SafeLangName().ToLowerInvariant();
-            if (string.IsNullOrEmpty(n) || n == "?") return "zh-CN";   // 读不到就保持中文默认
+            if (string.IsNullOrEmpty(n) || n == "?")
+            {
+                // Locale 还没加载好时的兜底：看系统语言（中文系统 → 中文，其余 → 英文）
+                try
+                {
+                    var sys = Application.systemLanguage;
+                    if (sys == SystemLanguage.Chinese || sys == SystemLanguage.ChineseSimplified ||
+                        sys == SystemLanguage.ChineseTraditional)
+                        return "zh-CN";
+                    return "en-US";
+                }
+                catch { return "zh-CN"; }
+            }
             if (n.Contains("zh") || n.Contains("chinese") || n.Contains("中文") ||
                 n.Contains("简体") || n.Contains("繁體") || n.Contains("繁体"))
                 return "zh-CN";
