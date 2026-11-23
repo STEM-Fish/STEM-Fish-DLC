@@ -10,7 +10,7 @@
     （`Locale.currentLangName`：`English` → en-US，`简体中文` → zh-CN）
   - 11 篇档案、sf10 / sf11 三版芯片状态分支、剧情关键台词、全部界面文案都已英文化
   - 界面里原先硬编码在 `ModMenu` / `DlcPanel` / `NewRunPanel` / `Jammer` / `SaveSlots` /
-    `WeaponHud` / `HudButton` 的文字，搬进 `ui.*.json` 的 `strings` 段（205 条）
+    `WeaponHud` / `HudButton` 的文字，搬进 `ui.*.json` 的 `strings` 段（221 条）
   - 英文 `expand` 只收录剧情关键情境；未收录的通用状态台词**保留游戏自带的英文台词**，
     不会退回中文（`FishVoice` 的“没有我的就保留原版”逻辑）
 - **血袋提示**：黄色血袋 `bloodbag` 和红血袋 `bloodbaghuman` 的名称/描述都强制改写为
