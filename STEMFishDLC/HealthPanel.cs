@@ -43,7 +43,7 @@ namespace STEMFishDLC;
 public static class HealthPanel
 {
     public const string SubjectName = "STEM-Fish";
-    public const string BodyStat = "171cm | 19y | #AAA01";
+    public static string BodyStat => $"{BodyProportion.HeightCm:0}cm | 19y | #AAA01";
 
     public static bool Enabled = true;
     public static bool Recolor = true;

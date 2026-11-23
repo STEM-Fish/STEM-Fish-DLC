@@ -85,6 +85,20 @@ public static class Mechanics
         }
         catch { }
 
+        // 血袋提示：名称和描述都强制覆盖原版文本（黄色 / 红血袋都与 SF-07 不匹配）
+        try
+        {
+            string bn = ItemText.Name("bloodbag");
+            string bd = ItemText.Desc("bloodbag");
+            string hn = ItemText.Name("bloodbaghuman");
+            string hd = ItemText.Desc("bloodbaghuman");
+            if (!string.IsNullOrEmpty(bn)) FishLocalization.ForceText("bloodbag", bn);
+            if (!string.IsNullOrEmpty(bd)) FishLocalization.ForceText("bloodbagdsc", bd);
+            if (!string.IsNullOrEmpty(hn)) FishLocalization.ForceText("bloodbaghuman", hn);
+            if (!string.IsNullOrEmpty(hd)) FishLocalization.ForceText("bloodbaghumandsc", hd);
+        }
+        catch { }
+
         var harmony = new Harmony("com.stemfish.dlc.mechanics");
         int n = 0;
 

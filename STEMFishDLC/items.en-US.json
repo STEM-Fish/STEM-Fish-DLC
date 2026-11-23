@@ -1,0 +1,58 @@
+{
+  "platecarrier": {
+    "name": "Tactical Chest Rig",
+    "desc": "A sand-colored chest rig with magazine pouches and a composite plate over the vitals. Light enough to move in, but it only covers what matters."
+  },
+  "tachelmet": {
+    "name": "Tactical Helmet",
+    "desc": "A helmet that covers the skull, with a pair of goggles clipped to the front. It makes me look like a mercenary."
+  },
+  "earplugs": {
+    "name": "Tactical Earplugs",
+    "desc": "Two orange foam plugs. Wear them when you shoot."
+  },
+  "blackpack": {
+    "name": "Black Backpack",
+    "desc": "A standard black synthetic backpack. It holds a lot. Nobody designed it for comfort, but it is good enough. It was probably my favorite thing in the lab, which is why they sent it down with me. A grave good, I suppose."
+  },
+  "ammobox": {
+    "name": "Ammo Box",
+    "desc": "An olive-drab steel box. It looks old, but what is inside still works."
+  },
+  "mdrz9": {
+    "name": "MDRZ9 7.62x51",
+    "desc": "A .308 bullpup. The one thing worth trusting down here. Apparently it was brought along to be \"tested\" too. Don't lose it."
+  },
+  "mdrz9mag": {
+    "name": "MDRZ9 Magazine (7.62x51)",
+    "desc": "A twenty-round straight magazine, steel-cased .308. Don't leave it on the floor, all right?"
+  },
+  "mdrz9round": {
+    "name": "7.62x51 M62",
+    "desc": "One round of .308 Winchester, full power. For some reason every round I find is a tracer."
+  },
+  "fishboots": {
+    "name": "Black Hard-Rubber Boots",
+    "desc": "Boots pressed from a single piece of black hard rubber, with a fine tread on the sole. Not comfortable, but they last."
+  },
+  "fishcoat": {
+    "name": "Grey Windbreaker",
+    "desc": "A dusty old windbreaker with a thin composite layer at the elbows and shoulders. It wears well."
+  },
+  "fishpants": {
+    "name": "Grey-Black Composite Trousers",
+    "desc": "Composite-fiber trousers in grey and black. They resist wear, and they never look dirty."
+  },
+  "jammer": {
+    "name": "Jammer",
+    "desc": "An emergency jammer of unknown origin. No maker's mark on the shell, only a small stamped number on the bottom: M-114. It can deaden the chip inside a small radius and let a blade finish the last few centimeters. The battery is single-use and matches the key of exactly one layer. Take it to the bottom and you will understand. Miss that layer and it is a piece of plastic."
+  },
+  "bloodbag": {
+    "name": "Blood Bag (incompatible with SF-07)",
+    "desc": "A 0.75L plastic bag with an autoinjector at the end. Injects 375mL on use. Use in the inventory to draw blood from yourself.\n\n⚠ SF-07's blood does not match a standard experiment blood bag. Transfusion causes severe nausea, fever, and rejection. Do not use it on SF-07."
+  },
+  "bloodbaghuman": {
+    "name": "Red Blood Bag (incompatible with SF-07)",
+    "desc": "A 0.75L plastic bag with an autoinjector at the end. Injects 375mL on use. Use in the inventory to draw blood from yourself. There are traces of red on it.\n\n⚠ Even a red blood bag is not a full match for SF-07. Transfusion causes severe nausea, fever, and rejection. Do not use it on SF-07."
+  }
+}

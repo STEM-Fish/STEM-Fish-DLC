@@ -2,6 +2,34 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.22.0 — 2026-11-23
+
+- **英文版 / English localization**
+  - 新增 `items.en-US.json`、`voice.en-US.json`、`lore.en-US.json`、`ui.en-US.json`；
+    `[General] Language` 支持 `auto` / `zh-CN` / `en-US`，`auto` 跟随游戏语言
+    （`Locale.currentLangName`：`English` → en-US，`简体中文` → zh-CN）
+  - 11 篇档案、sf10 / sf11 三版芯片状态分支、剧情关键台词、全部界面文案都已英文化
+  - 界面里原先硬编码在 `ModMenu` / `DlcPanel` / `NewRunPanel` / `Jammer` / `SaveSlots` /
+    `WeaponHud` / `HudButton` 的文字，搬进 `ui.*.json` 的 `strings` 段（205 条）
+  - 英文 `expand` 只收录剧情关键情境；未收录的通用状态台词**保留游戏自带的英文台词**，
+    不会退回中文（`FishVoice` 的“没有我的就保留原版”逻辑）
+- **血袋提示**：黄色血袋 `bloodbag` 和红血袋 `bloodbaghuman` 的名称/描述都强制改写为
+  「与 SF-07 不匹配」，描述里写明输注会导致严重恶心、发烧和排斥反应。
+  中英文同步（`items.*.json` + `FishLocalization.ForceText`）
+- **修 F4 快速存档后的鬼影 / 商人舱歪倒**
+  - 写回地图后调用 `WorldGeneration.ClearBlockDamages()`，销毁爆炸留下的方块伤害贴花
+  - `RefreshChunks` 在 `SetTiles` 之后补发 `ChunkUpdated`，刷新碰撞体 / `ChunkScript`
+    （只换贴图不刷碰撞体，是商人舱陷进地形、歪倒的根因）
+  - 新增 `ResetBuildings`：读档后把 `BuildingEntity` 的速度/角速度归零、旋转归零
+- **关掉 DLC 后仍有中文独白**：`FishVoice.SayLine / Sequence / RandomLine` 增加
+  `ModState.Enabled` 硬门槛；停用时即使有残留调用也不会再出 mod 台词。
+  如果听到的是游戏自带中文，那是游戏语言设置，不是本 MOD 的文本。
+- **主菜单双描边**：`MenuArt` 换轮廓 sprite 时把主立绘的 RectTransform 一并抄给
+  outline Image（原来只换图、不换矩形，旧美术的框和新轮廓错开就成了双线）；
+  轮廓 alpha 阈值从 24 降到 0，消除抗锯齿边缘的透明缝
+- **界面/文本同步**：`HealthPanel.BodyStat` 改为读 `BodyProportion.HeightCm`
+  （之前固定写 171cm，和 170cm 的体型设置打架）
+
 ## 0.21.1 — 2026-11-21
 
 - **档案全文重写（sf04~sf11），统一到前三篇的语气**

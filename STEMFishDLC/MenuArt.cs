@@ -248,7 +248,7 @@ public static class MenuArt
             var px = full.GetPixels32();
             int n = w * h;
             var mask = new byte[n];
-            for (int i = 0; i < n; i++) mask[i] = px[i].a > 24 ? (byte)1 : (byte)0;
+            for (int i = 0; i < n; i++) mask[i] = px[i].a > 0 ? (byte)1 : (byte)0;
 
             // 分离式最大值滤波（先横后纵）＝ 方形膨胀；再减去原剪影，得到"外圈描边带"
             var tmp = new byte[n];
@@ -391,6 +391,25 @@ public static class MenuArt
                 Plugin.Log.LogInfo($"[STEMFishDLC] 菜单立绘：轮廓 Image（原 {info}{rect}）已换上生成轮廓");
             }
             oimg.sprite = _outline;
+            // ★ 只换 sprite 不够：outline Image 的 RectTransform 还是旧美术的尺寸/位置，
+            //   而新轮廓是按当前立绘生成的 → 两层边错开，看起来就是"双描边"。
+            //   把主立绘的矩形原样抄过去，两层就重合了。
+            try
+            {
+                var srcRt = _img != null ? _img.rectTransform : null;
+                var dstRt = oimg.rectTransform;
+                if (srcRt != null && dstRt != null)
+                {
+                    dstRt.anchorMin = srcRt.anchorMin;
+                    dstRt.anchorMax = srcRt.anchorMax;
+                    dstRt.pivot = srcRt.pivot;
+                    dstRt.sizeDelta = srcRt.sizeDelta;
+                    dstRt.anchoredPosition = srcRt.anchoredPosition;
+                    dstRt.localScale = srcRt.localScale;
+                    dstRt.localRotation = srcRt.localRotation;
+                }
+            }
+            catch { }
             n++;
         }
 

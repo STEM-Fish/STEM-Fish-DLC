@@ -59,7 +59,10 @@ cp "$PAT" "$DST/patchers/"
 
 mkdir -p "$PLUGIN/textures"
 cp "$ROOT"/STEMFishDLC/textures/*.png "$PLUGIN/textures/"
-cp "$ROOT"/STEMFishDLC/items.zh-CN.json "$ROOT"/STEMFishDLC/voice.zh-CN.json "$ROOT"/STEMFishDLC/lore.zh-CN.json "$ROOT"/STEMFishDLC/ui.zh-CN.json "$PLUGIN/"
+cp "$ROOT"/STEMFishDLC/items.zh-CN.json "$ROOT"/STEMFishDLC/items.en-US.json \
+   "$ROOT"/STEMFishDLC/voice.zh-CN.json "$ROOT"/STEMFishDLC/voice.en-US.json \
+   "$ROOT"/STEMFishDLC/lore.zh-CN.json "$ROOT"/STEMFishDLC/lore.en-US.json \
+   "$ROOT"/STEMFishDLC/ui.zh-CN.json "$ROOT"/STEMFishDLC/ui.en-US.json "$PLUGIN/"
 
 if [ -d "$ROOT/STEMFishDLC/lore_img" ]; then
   mkdir -p "$PLUGIN/lore_img"

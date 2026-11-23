@@ -69,7 +69,7 @@ public static class LoreData
     }
 
     public static string Dir => Path.Combine(Paths.PluginPath, "STEMFishDLC");
-    private static string LorePath => Path.Combine(Dir, "lore.zh-CN.json");
+    private static string LorePath => Lang.File("lore");
 
     // ★ 归档进度**绑定存档**：写到游戏存档旁边（save.sv.lore），而不是插件目录。
     //   游戏的存档只有单槽：Application.persistentDataPath + "\save.sv"（见 SaveSystem.HasSave）。

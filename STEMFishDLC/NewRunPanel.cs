@@ -224,8 +224,10 @@ public static class NewRunPanel
 
             float footY = CardsTop - RunConfig.All.Length * (CardH + CardGap) - 8f;
             var foot = MakeText(rt, "Foot",
-                $"所有模式的开局装备相同，初始技能固定为 力量 {PlayerSkills.STR} / 耐力 {PlayerSkills.RES} / 智力 {PlayerSkills.INT}。" +
-                $"      负重上限 ×{RunConfig.EncumbranceCap:0.0}",
+                string.Format(UiText.T("newrun.statline",
+                    Lang.T("所有模式的开局装备相同，初始技能固定为 力量 {0} / 耐力 {1} / 智力 {2}。      负重上限 ×{3}",
+                           "All modes share the same starter kit. Starting stats: STR {0} / RES {1} / INT {2}.      Carry cap x{3}")),
+                    PlayerSkills.STR, PlayerSkills.RES, PlayerSkills.INT, RunConfig.EncumbranceCap),
                 12f, FaintCol, TextAlignmentOptions.Left);
             PlaceL(foot.rectTransform, LeftX, footY, new Vector2(CardW, 20f));
 
@@ -245,7 +247,9 @@ public static class NewRunPanel
             b1.enableWordWrapping = true;
             Place(b1.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -34f), new Vector2(CardW - 32f, 90f));
 
-            var bp = MakeText(box.transform, "P", "位置：" + SaveSlots.Root, 10f, FaintCol, TextAlignmentOptions.TopLeft);
+            var bp = MakeText(box.transform, "P",
+                string.Format(UiText.T("newrun.position", Lang.T("位置：{0}", "Location: {0}")), SaveSlots.Root),
+                10f, FaintCol, TextAlignmentOptions.TopLeft);
             Place(bp.rectTransform, new Vector2(0f, 0f), new Vector2(16f, 8f), new Vector2(CardW - 32f, 14f));
 
             BuildBackButton(rt, pre, -494f);
@@ -306,8 +310,16 @@ public static class NewRunPanel
 
         // 右下：这一模式的实际数值
         string nums = d.dynamicDensity > 0.01f
-            ? $"怪物 生成×{d.enemySpawnMul * RunConfig.EnemyDensityScale:0.0} + 动态×{d.dynamicDensity * RunConfig.EnemyDensityScale:0.0}      陷阱 ×{d.trapMul:0.00}"
-            : $"怪物 ×{d.enemySpawnMul * RunConfig.EnemyDensityScale:0.0}      陷阱 ×{d.trapMul:0.00}";
+            ? string.Format(UiText.T("newrun.stats.dynamic",
+                Lang.T("怪物 生成×{0} + 动态×{1}      陷阱 ×{2}",
+                       "Creatures spawn x{0} + dynamic x{1}      Traps x{2}")),
+                d.enemySpawnMul * RunConfig.EnemyDensityScale,
+                d.dynamicDensity * RunConfig.EnemyDensityScale,
+                d.trapMul)
+            : string.Format(UiText.T("newrun.stats.static",
+                Lang.T("怪物 ×{0}      陷阱 ×{1}", "Creatures x{0}      Traps x{1}")),
+                d.enemySpawnMul * RunConfig.EnemyDensityScale,
+                d.trapMul);
         var stat = MakeText(rt, "Stat", nums, 12f, SkyCol, TextAlignmentOptions.BottomRight);
         Place(stat.rectTransform, new Vector2(1f, 0f), new Vector2(-18f, 10f), new Vector2(460f, 18f));
 
@@ -329,7 +341,7 @@ public static class NewRunPanel
         PlaceL(ld.rectTransform, RightX, 378f, new Vector2(RightW - 120f, 20f));
 
         // 右上角：打开存档目录
-        var openBtn = MakeButton(root, "打开目录", RightX + RightW - 96f, 410f, 96f, 24f,
+        var openBtn = MakeButton(root, UiText.T("newrun.opendir", Lang.T("打开目录", "Open folder")), RightX + RightW - 96f, 410f, 96f, 24f,
                                  new Color(0.12f, 0.15f, 0.18f, 1f), DimCol, () =>
         {
             try { Application.OpenURL("file://" + SaveSlots.Root.Replace("\\", "/")); } catch { }
@@ -441,7 +453,8 @@ public static class NewRunPanel
         var bar = NewImage(rt, "Bar", isCurrent ? GoodCol : new Color(1f, 1f, 1f, 0.10f));
         Place(bar.rectTransform, new Vector2(0f, 0.5f), Vector2.zero, new Vector2(3f, 78f));
 
-        string tag = isCurrent ? "  <size=12><color=#8fd6c4>· 当前</color></size>" : "";
+        string tag = isCurrent ? "  <size=12><color=#8fd6c4>" +
+            UiText.T("common.current", Lang.T("· 当前", "· CURRENT")) + "</color></size>" : "";
         string head = string.IsNullOrEmpty(s.name) ? s.id : s.name;
         var name = MakeText(rt, "Name", head + tag, 17f, TextCol, TextAlignmentOptions.TopLeft);
         Place(name.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -10f), new Vector2(RightW - 240f, 24f));
@@ -459,7 +472,7 @@ public static class NewRunPanel
         string curName = head;
 
         // 载入
-        MakeButton(rt, "载入", 0f, 0f, 64f, 26f, GoodCol, new Color(0.06f, 0.09f, 0.09f, 1f), () =>
+        MakeButton(rt, UiText.T("newrun.load", Lang.T("载入", "Load")), 0f, 0f, 64f, 26f, GoodCol, new Color(0.06f, 0.09f, 0.09f, 1f), () =>
         {
             if (_busy) return;
             _busy = true;
@@ -479,18 +492,23 @@ public static class NewRunPanel
         }, anchorRight: true, offsetX: -12f);
 
         // 改名
-        MakeButton(rt, "改名", 0f, 0f, 56f, 26f, new Color(0.15f, 0.18f, 0.22f, 1f), DimCol, () =>
+        MakeButton(rt, UiText.T("newrun.rename", Lang.T("改名", "Rename")), 0f, 0f, 56f, 26f, new Color(0.15f, 0.18f, 0.22f, 1f), DimCol, () =>
         {
             if (_busy) return;
-            OpenNameDialog(null, id, "重命名存档", "只改名字，不动存档内容。", curName);
+            OpenNameDialog(null, id,
+                UiText.T("newrun.rename.title", Lang.T("重命名存档", "Rename save")),
+                UiText.T("newrun.rename.desc", Lang.T("只改名字，不动存档内容。", "Only the name changes; the save itself is untouched.")),
+                curName);
         }, anchorRight: true, offsetX: -84f);
 
         // 删除
-        MakeButton(rt, "删除", 0f, 0f, 56f, 26f, new Color(0.20f, 0.12f, 0.12f, 1f), BadCol, () =>
+        MakeButton(rt, UiText.T("newrun.delete", Lang.T("删除", "Delete")), 0f, 0f, 56f, 26f, new Color(0.20f, 0.12f, 0.12f, 1f), BadCol, () =>
         {
             if (_busy) return;
-            OpenConfirm("删除存档",
-                $"「{curName}」会被永久删除（含档案进度），没法恢复。",
+            OpenConfirm(UiText.T("newrun.delete.title", Lang.T("删除存档", "Delete save")),
+                string.Format(UiText.T("newrun.delete.desc",
+                    Lang.T("「{0}」会被永久删除（含档案进度），没法恢复。",
+                           "\"{0}\" will be permanently deleted, including terminal progress. This cannot be undone.")), curName),
                 () =>
                 {
                     SaveSlots.Delete(id);
@@ -504,7 +522,7 @@ public static class NewRunPanel
     // ==========================================================================
     private static void BuildBackButton(RectTransform root, PreRunScript pre, float y)
     {
-        MakeButton(root, "← 返回", 0f, 0f, 124f, 30f,
+        MakeButton(root, UiText.T("newrun.back", Lang.T("← 返回", "← Back")), 0f, 0f, 124f, 30f,
                    new Color(0.10f, 0.12f, 0.15f, 1f), DimCol, () =>
         {
             try { if (pre.runSettingsScreen != null) pre.runSettingsScreen.SetActive(false); }
@@ -527,8 +545,12 @@ public static class NewRunPanel
         }
 
         string def = $"{d.label} · {DateTime.Now:MM-dd HH:mm}";
-        OpenNameDialog(d, null, "给这个存档起个名字",
-            $"{d.label} · 每层底部的存档点会自动写入，也可以随时按 {SaveSlots.SaveKey} 手动保存。", def);
+        OpenNameDialog(d, null,
+            UiText.T("newrun.name.title", Lang.T("给这个存档起个名字", "Name this save")),
+            string.Format(UiText.T("newrun.name.desc",
+                Lang.T("{0} · 每层底部的存档点会自动写入，也可以随时按 {1} 手动保存。",
+                       "{0} · the checkpoint at the bottom of each layer saves automatically; press {1} to save manually.")),
+                d.label, SaveSlots.SaveKey), def);
     }
 
     private static void StartRun(RunConfig.Difficulty d, string slotName)
@@ -590,10 +612,10 @@ public static class NewRunPanel
 
         _dialogInput = MakeInput(panel.rectTransform, new Vector2(0f, -6f), new Vector2(580f, 42f), initial);
 
-        MakeButton(panel.transform, "取消", 0f, 0f, 100f, 32f, new Color(0.13f, 0.16f, 0.19f, 1f), DimCol,
+        MakeButton(panel.transform, UiText.T("common.cancel", Lang.T("取消", "Cancel")), 0f, 0f, 100f, 32f, new Color(0.13f, 0.16f, 0.19f, 1f), DimCol,
                    CloseDialog, placeLeft: true, leftX: -290f, leftY: -88f);
 
-        MakeButton(panel.transform, "开始", 0f, 0f, 120f, 32f, SkyCol, new Color(0.03f, 0.06f, 0.08f, 1f),
+        MakeButton(panel.transform, UiText.T("common.start", Lang.T("开始", "Start")), 0f, 0f, 120f, 32f, SkyCol, new Color(0.03f, 0.06f, 0.08f, 1f),
                    ConfirmDialog, placeLeft: true, leftX: 170f, leftY: -88f);
 
         // 回车 = 确定
@@ -636,10 +658,10 @@ public static class NewRunPanel
         st.enableWordWrapping = true;
         PlaceL(st.rectTransform, -270f, 20f, new Vector2(540f, 60f));
 
-        MakeButton(panel.transform, "取消", 0f, 0f, 100f, 32f, new Color(0.13f, 0.16f, 0.19f, 1f), DimCol,
+        MakeButton(panel.transform, UiText.T("common.cancel", Lang.T("取消", "Cancel")), 0f, 0f, 100f, 32f, new Color(0.13f, 0.16f, 0.19f, 1f), DimCol,
                    CloseDialog, placeLeft: true, leftX: -270f, leftY: -62f);
 
-        MakeButton(panel.transform, "删除", 0f, 0f, 120f, 32f, BadCol, new Color(0.10f, 0.03f, 0.03f, 1f),
+        MakeButton(panel.transform, UiText.T("common.delete", Lang.T("删除", "Delete")), 0f, 0f, 120f, 32f, BadCol, new Color(0.10f, 0.03f, 0.03f, 1f),
                    () =>
                    {
                        var cb = _pendingConfirm;

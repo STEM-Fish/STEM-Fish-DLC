@@ -50,7 +50,7 @@ public static class ModMenu
     private static TextMeshProUGUI _header, _footer;
     private static int _tab;
     private static bool _visible;
-    private static readonly string[] TabNames = { "模块", "热键", "存档" };
+    private static readonly string[] TabNames = { "Modules", "Hotkeys", "Saves" };
     private static readonly TextMeshProUGUI[] _tabTexts = new TextMeshProUGUI[3];
 
     private static float _animT = 1f;
@@ -66,6 +66,19 @@ public static class ModMenu
 
     public static bool Visible => _visible;
 
+    // 本页的 UI 文案：ui.<lang>.json 的 strings 段，键前缀 modmenu.
+    private static string M(string key, string zh, string en)
+    {
+        return UiText.T("modmenu." + key, Lang.T(zh, en));
+    }
+
+    private static void RefreshTabNames()
+    {
+        TabNames[0] = M("tab.modules", "模块", "Modules");
+        TabNames[1] = M("tab.hotkeys", "热键", "Hotkeys");
+        TabNames[2] = M("tab.saves", "存档", "Saves");
+    }
+
     // 需要重启才生效的项：先记在 pending 里，点"应用并重启"才落盘
     private static bool _pEnabled, _pIsolate;
     private static void SyncPending()
@@ -79,6 +92,7 @@ public static class ModMenu
     // ==========================================================================
     public static void Init(Plugin plugin)
     {
+        RefreshTabNames();
         RegisterModules();
 
         foreach (var m in _modules)
@@ -127,38 +141,38 @@ public static class ModMenu
         _modules.Clear();
         _modules.Add(new Module
         {
-            key = "Voice", name = "自言自语",
-            desc = "角色内心独白（F9）",
+            key = "Voice", name = M("module.voice.name", "自言自语", "Voice"),
+            desc = M("module.voice.desc", "角色内心独白（F9）", "Inner monologue (F9)"),
             get = () => FishVoice.Enabled, set = v => FishVoice.Enabled = v,
         });
         _modules.Add(new Module
         {
-            key = "VoiceExpand", name = "原版台词扩充",
-            desc = "原版台词扩充（F10）",
+            key = "VoiceExpand", name = M("module.expand.name", "原版台词扩充", "Base-line expansion"),
+            desc = M("module.expand.desc", "原版台词扩充（F10）", "Expand the base game's contextual lines (F10)"),
             get = () => FishVoice.ExpandEnabled, set = v => FishVoice.ExpandEnabled = v,
         });
         _modules.Add(new Module
         {
-            key = "WeaponHud", name = "武器状态 HUD",
-            desc = "右下角武器状态",
+            key = "WeaponHud", name = M("module.weapon.name", "武器状态 HUD", "Weapon HUD"),
+            desc = M("module.weapon.desc", "右下角武器状态", "Weapon status in the lower right"),
             get = () => WeaponHud.Enabled, set = v => WeaponHud.Enabled = v,
         });
         _modules.Add(new Module
         {
-            key = "LoreNotes", name = "档案投放到世界",
-            desc = "每层生成一份档案",
+            key = "LoreNotes", name = M("module.lore.name", "档案投放到世界", "Lore notes in the world"),
+            desc = M("module.lore.desc", "每层生成一份档案", "One terminal entry per layer"),
             get = () => LoreNote.SpawnEnabled, set = v => LoreNote.SpawnEnabled = v,
         });
         _modules.Add(new Module
         {
-            key = "StarterKit", name = "开局物资",
-            desc = "新开局发放全套装备",
+            key = "StarterKit", name = M("module.starter.name", "开局物资", "Starter kit"),
+            desc = M("module.starter.desc", "新开局发放全套装备", "Full kit on a new run"),
             get = () => StarterKit.Enabled, set = v => StarterKit.Enabled = v,
         });
         _modules.Add(new Module
         {
-            key = "Cursor", name = "准星替换",
-            desc = "内置准星替换",
+            key = "Cursor", name = M("module.cursor.name", "准星替换", "Crosshair"),
+            desc = M("module.cursor.desc", "内置准星替换", "Replace the crosshair"),
             get = () => CursorFeature.Enabled, set = v => CursorFeature.Toggle(v),
         });
     }
@@ -205,7 +219,7 @@ public static class ModMenu
         }
 
         CleanupClonedButton(go);
-        ReplaceTexts(go, "MOD 管理");
+        ReplaceTexts(go, M("button", "MOD 管理", "MOD SETTINGS"));
 
         var rt = go.GetComponent<RectTransform>();
         var srcRt = pre.loadButton.transform as RectTransform;
@@ -230,8 +244,8 @@ public static class ModMenu
         foreach (var tip in go.GetComponentsInChildren<UITooltip>(true))
         {
             tip.skipLocale = true;
-            tip.tipName = "MOD 管理";
-            tip.tipDesc = "模块 / 热键 / 存档 / 启用";
+            tip.tipName = M("tip.name", "MOD 管理", "MOD SETTINGS");
+            tip.tipDesc = M("tip.desc", "模块 / 热键 / 存档 / 启用", "Modules, hotkeys, saves, enable");
             tip.localeName = "";
             tip.localeDesc = "";
         }
@@ -345,7 +359,7 @@ public static class ModMenu
             fill.raycastTarget = false;
 
             // ---- 文字 ----
-            var label = NewText("Label", rt, "保存", 22f, new Color(0.62f, 0.94f, 0.88f, 1f));
+            var label = NewText("Label", rt, M("pause.save", "保存", "SAVE"), 22f, new Color(0.62f, 0.94f, 0.88f, 1f));
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
@@ -635,7 +649,7 @@ public static class ModMenu
         headerRt.sizeDelta = new Vector2(0, 52);
         AddImage(headerRt.gameObject, HeaderBg);
 
-        _header = NewText("Title", headerRt, "STEM Fish DLC · MOD 管理", 24, Accent);
+        _header = NewText("Title", headerRt, M("title", "STEM Fish DLC · MOD 管理", "STEM Fish DLC · MOD SETTINGS"), 24, Accent);
         var trt = _header.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = new Vector2(20, 0); trt.offsetMax = new Vector2(-70, 0);
@@ -693,7 +707,7 @@ public static class ModMenu
         var closeBtn = closeRt.gameObject.AddComponent<Button>();
         closeBtn.targetGraphic = closeImg;
         closeBtn.onClick.AddListener(Close);
-        var ct = NewText("X", closeRt, "关闭", 15, Body);
+        var ct = NewText("X", closeRt, UiText.T("common.close", Lang.T("关闭", "Close")), 15, Body);
         var crt = ct.rectTransform;
         crt.anchorMin = Vector2.zero; crt.anchorMax = Vector2.one;
         crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
@@ -747,7 +761,12 @@ public static class ModMenu
 
         ClearContent();
         if (_footer != null)
-            _footer.text = $"v{ModState.Version} · 配置写回 BepInEx/config/com.stemfish.dlc.cfg · 状态：{(ModState.Enabled ? "已启用" : "已停用")}";
+            _footer.text = string.Format(
+                UiText.T("modmenu.footer", Lang.T("v{0} · 配置写回 BepInEx/config/com.stemfish.dlc.cfg · 状态：{1}",
+                                                   "v{0} · Config: BepInEx/config/com.stemfish.dlc.cfg · Status: {1}")),
+                ModState.Version,
+                ModState.Enabled ? UiText.T("common.enabled", Lang.T("已启用", "ENABLED"))
+                                 : UiText.T("common.disabled", Lang.T("已停用", "DISABLED")));
 
         if (_tab == 0) BuildModuleTab();
         else if (_tab == 1) BuildKeyTab();
@@ -774,17 +793,27 @@ public static class ModMenu
         bool dirty = _pEnabled != ModState.Enabled || _pIsolate != ModState.Isolate;
 
         AddLabel(dirty
-            ? "<b>状态</b>   <color=#d8a83e>待生效</color>"
-            : "<b>状态</b>   <color=#5a6672>正常</color>", 26);
+            ? M("status.pending", "<b>状态</b>   <color=#d8a83e>待生效</color>",
+                              "<b>STATUS</b>   <color=#d8a83e>RESTART REQUIRED</color>")
+            : M("status.ok", "<b>状态</b>   <color=#5a6672>正常</color>",
+                            "<b>STATUS</b>   <color=#5a6672>OK</color>"), 26);
 
-        AddToggleRow("启用本 DLC", _pEnabled, "关闭后全部功能不加载", v => { _pEnabled = v; });
+        AddToggleRow(M("toggle.enabled", "启用本 DLC", "Enable this DLC"), _pEnabled,
+            M("toggle.enabled.desc", "关闭后全部功能不加载", "When off, no features are loaded"),
+            v => { _pEnabled = v; });
 
-        AddToggleRow("屏蔽其他 MOD", _pIsolate, "只加载本 DLC 与 KrokMP", v => { _pIsolate = v; });
+        AddToggleRow(M("toggle.isolate", "屏蔽其他 MOD", "Isolate other mods"), _pIsolate,
+            M("toggle.isolate.desc", "只加载本 DLC 与 KrokMP", "Load only this DLC and KrokMP"),
+            v => { _pIsolate = v; });
 
-        AddActionRow("已屏蔽",
-            ModState.IsIsolatedNow ? $"<color=#4fc3a1>{ModState.IsolatedFileCount()} 个</color>" : "无", "", null);
+        AddActionRow(M("isolated", "已屏蔽", "Isolated"),
+            ModState.IsIsolatedNow
+                ? $"<color=#4fc3a1>{ModState.IsolatedFileCount()} " + Lang.T("个", "file(s)") + "</color>"
+                : UiText.T("common.none", Lang.T("无", "None")), "", null);
 
-        AddToggleRow("调试功能", ModState.DebugTools, "F6/F7/F11/F12 直接给物品；F5 特效测试",
+        AddToggleRow(M("debug", "调试功能", "Debug tools"), ModState.DebugTools,
+            M("debug.desc", "F6/F7/F11/F12 直接给物品；F5 特效测试",
+                            "F6/F7/F11/F12 spawn items; F5 effects test"),
             v =>
             {
                 ModState.DebugTools = v;
@@ -799,10 +828,12 @@ public static class ModMenu
                 catch { }
             });
 
-        AddActionRow("其他 MOD", "", ModState.OtherModNames(), null);
+        AddActionRow(M("othermods", "其他 MOD", "Other mods"), "", ModState.OtherModNames(), null);
 
-        AddActionRow("写入配置", dirty ? "<color=#d8a83e>待写入</color>" : "无需写入",
-            "写完后从 Steam 手动重启游戏", () =>
+        AddActionRow(M("write", "写入配置", "Write config"),
+            dirty ? M("write.pending", "<color=#d8a83e>待写入</color>", "<color=#d8a83e>PENDING</color>")
+                  : M("write.none", "无需写入", "No change"),
+            M("write.hint", "写完后从 Steam 手动重启游戏", "Restart the game from Steam after writing"), () =>
             {
                 ModState.ApplyAndTellUser(_pEnabled, _pIsolate, ModState.DebugTools);
                 _pEnabled = ModState.Enabled;
@@ -810,7 +841,8 @@ public static class ModMenu
                 Refresh();
             });
 
-        AddLabel("<b>模块</b>   <color=#5a6672>点击切换</color>", 26);
+        AddLabel(M("section.modules", "<b>模块</b>   <color=#5a6672>点击切换</color>",
+                                      "<b>MODULES</b>   <color=#5a6672>click to toggle</color>"), 26);
         foreach (var m in _modules)
         {
             var mod = m;
@@ -820,7 +852,9 @@ public static class ModMenu
             label.enableWordWrapping = true;
             bool on = false;
             try { on = mod.get(); } catch { }
-            value.text = on ? "<color=#4fc3a1>开</color>" : "<color=#d05a5a>关</color>";
+            value.text = on
+                ? "<color=#4fc3a1>" + UiText.T("common.on", Lang.T("开", "ON")) + "</color>"
+                : "<color=#d05a5a>" + UiText.T("common.off", Lang.T("关", "OFF")) + "</color>";
             btn.onClick.AddListener(() =>
             {
                 try
@@ -850,15 +884,22 @@ public static class ModMenu
     // ==========================================================================
     private static void BuildKeyTab()
     {
-        AddLabel("<b>热键</b>   <color=#5a6672>游戏内随时可用</color>", 26);
-        AddKeyRow("战术终端", "F8", "打开/关闭战术终端（也可以点左下角图标）", true);
-        AddKeyRow("自言自语开关", "F9", "临时关掉角色主动吐槽", true);
-        AddKeyRow("台词扩充开关", "F10", "临时关掉原版情境台词扩充", true);
+        AddLabel(M("section.hotkeys", "<b>热键</b>   <color=#5a6672>游戏内随时可用</color>",
+                                      "<b>HOTKEYS</b>   <color=#5a6672>available in-game</color>"), 26);
+        AddKeyRow(M("key.terminal.name", "战术终端", "Tactical terminal"), "F8",
+            M("key.terminal.desc", "打开/关闭战术终端（也可以点左下角图标）",
+                                   "Open/close the tactical terminal (or click the icon in the lower left)"), true);
+        AddKeyRow(M("key.voice.name", "自言自语开关", "Voice toggle"), "F9",
+            M("key.voice.desc", "临时关掉角色主动吐槽", "Temporarily disable the inner monologue"), true);
+        AddKeyRow(M("key.expand.name", "台词扩充开关", "Base-line toggle"), "F10",
+            M("key.expand.desc", "临时关掉原版情境台词扩充", "Temporarily disable the base-line expansion"), true);
 
-        AddLabel("<b>调试</b>   <color=#5a6672>默认关闭；打开后下列按键才会生效</color>", 26);
+        AddLabel(M("section.debug", "<b>调试</b>   <color=#5a6672>默认关闭；打开后下列按键才会生效</color>",
+                                    "<b>DEBUG</b>   <color=#5a6672>off by default; the keys below only work when enabled</color>"), 26);
 
-        AddToggleRow("启用调试", ModState.DebugTools,
-            "调试热键只在本机测试时用，正式游玩建议关闭",
+        AddToggleRow(M("key.debug.name", "启用调试", "Enable debug"), ModState.DebugTools,
+            M("key.debug.desc", "调试热键只在本机测试时用，正式游玩建议关闭",
+                                "Debug keys are for local testing; keep them off for normal play"),
             v =>
             {
                 ModState.DebugTools = v;
@@ -874,14 +915,24 @@ public static class ModMenu
             });
 
         bool dbg = ModState.DebugTools;
-        AddKeyRow("屏蔽器", "F3", "给一个屏蔽器（等同太阳耀斑 + 拆芯片抉择）", dbg);
-        AddKeyRow("解除禁足", "F2", "剧情卡住 / forceNoMovement 未复位时手动解除", dbg);
-        AddKeyRow("给予 MDRZ9", "F6", "直接给一把 MDRZ9", dbg);
-        AddKeyRow("给予弹药", "F7", "两个 7.62 弹匣 + 20 发子弹（自动进弹挂甲）", dbg);
-        AddKeyRow("给予弹挂甲", "F11", "战术弹挂甲", dbg);
-        AddKeyRow("给予头盔", "F12", "战术头盔", dbg);
+        AddKeyRow(M("key.jammer.name", "屏蔽器", "Jammer"), "F3",
+            M("key.jammer.desc", "给一个屏蔽器（等同太阳耀斑 + 拆芯片抉择）",
+                                 "Spawn a jammer (solar flare + chip choice)"), dbg);
+        AddKeyRow(M("key.unstick.name", "解除禁足", "Unstick"), "F2",
+            M("key.unstick.desc", "剧情卡住 / forceNoMovement 未复位时手动解除",
+                                  "Clear a stuck story state / forceNoMovement"), dbg);
+        AddKeyRow(M("key.mdrz9.name", "给予 MDRZ9", "Give MDRZ9"), "F6",
+            M("key.mdrz9.desc", "直接给一把 MDRZ9", "Spawn an MDRZ9"), dbg);
+        AddKeyRow(M("key.ammo.name", "给予弹药", "Give ammo"), "F7",
+            M("key.ammo.desc", "两个 7.62 弹匣 + 20 发子弹（自动进弹挂甲）",
+                               "Two 7.62 magazines + 20 rounds (auto into the rig)"), dbg);
+        AddKeyRow(M("key.carrier.name", "给予弹挂甲", "Give chest rig"), "F11",
+            M("key.carrier.desc", "战术弹挂甲", "Tactical chest rig"), dbg);
+        AddKeyRow(M("key.helmet.name", "给予头盔", "Give helmet"), "F12",
+            M("key.helmet.desc", "战术头盔", "Tactical helmet"), dbg);
 
-        AddLabel("<color=#5a6672>提示：F6~F12 里除 F8/F9/F10 之外的按键都受「启用调试」控制。</color>", 30);
+        AddLabel(M("debug.hint", "<color=#5a6672>提示：F6~F12 里除 F8/F9/F10 之外的按键都受「启用调试」控制。</color>",
+                                 "<color=#5a6672>Note: F6~F12 (except F8/F9/F10) require Debug tools to be enabled.</color>"), 30);
     }
 
     private static void AddKeyRow(string name, string key, string desc, bool enabled)
@@ -904,16 +955,25 @@ public static class ModMenu
 
     private static void BuildSaveTab()
     {
-        AddLabel("<b>存档</b>   <color=#5a6672>点一行可以重命名/删除；备注只记在本地，不改存档内容</color>", 26);
+        AddLabel(M("section.saves", "<b>存档</b>   <color=#5a6672>点一行可以重命名/删除；备注只记在本地，不改存档内容</color>",
+                                      "<b>SAVES</b>   <color=#5a6672>click a row to rename/delete; notes are local only</color>"), 26);
 
         // ---- 当前存档（v0.18.0 起走命名槽位）----
         string cur = SaveSlots.HasCurrent
             ? $"<color=#8fd6c4>{SaveSlots.CurrentName}</color>   <size=12><color=#5a6672>{SaveSlots.CurrentId}</color></size>"
-            : "<color=#c98a4a>未选（急速下坠）</color>   <size=12><color=#5a6672>保存时会现场新建一个</color></size>";
-        AddActionRow("当前存档", cur, $"存档键 {SaveSlots.SaveKey} · 存档点自动存档 {(SaveSlots.AutoSaveAtCheckpoint ? "开" : "关")}", () =>
+            : M("currentsave.none", "<color=#c98a4a>未选（急速下坠）</color>   <size=12><color=#5a6672>保存时会现场新建一个</color></size>",
+                                    "<color=#c98a4a>None (Freefall)</color>   <size=12><color=#5a6672>a new slot will be created on save</color></size>");
+        AddActionRow(M("currentsave", "当前存档", "Current save"), cur,
+            string.Format(M("currentsave.desc", "存档键 {0} · 存档点自动存档 {1}", "Save key {0} · checkpoint auto-save {1}"),
+                SaveSlots.SaveKey,
+                UiText.T(SaveSlots.AutoSaveAtCheckpoint ? "common.on" : "common.off",
+                         Lang.T(SaveSlots.AutoSaveAtCheckpoint ? "开" : "关",
+                                SaveSlots.AutoSaveAtCheckpoint ? "ON" : "OFF"))), () =>
         {
             SaveSlots.SaveCurrent(false);
-            if (_footer != null) _footer.text = SaveSlots.HasCurrent ? $"已保存到「{SaveSlots.CurrentName}」" : "没在局内";
+            if (_footer != null) _footer.text = SaveSlots.HasCurrent
+                ? string.Format(M("currentsave.saved", "已保存到「{0}」", "Saved to \"{0}\""), SaveSlots.CurrentName)
+                : M("currentsave.notinrun", "没在局内", "Not in a run");
             Refresh();
         });
 
@@ -930,7 +990,8 @@ public static class ModMenu
         }
         catch { }
 
-        if (saves.Count == 0) AddLabel("<color=#5a6672>没有找到存档文件。</color>", 30);
+        if (saves.Count == 0) AddLabel(M("saves.empty", "<color=#5a6672>没有找到存档文件。</color>",
+                                                       "<color=#5a6672>No save files found.</color>"), 30);
 
         var notes = LoadNotes();
         saves.Sort();
@@ -949,24 +1010,31 @@ public static class ModMenu
             var file = f;
             var relKey = rel;
             var noteVal = note ?? "";
-            AddActionRow(title, "<color=#8fd6c4>重命名</color>", desc, () => ShowSaveDialog(file, relKey, noteVal));
+            AddActionRow(title, "<color=#8fd6c4>" + UiText.T("common.rename", Lang.T("改名", "Rename")) + "</color>",
+                desc, () => ShowSaveDialog(file, relKey, noteVal));
         }
 
-        AddLabel("<b>操作</b>", 26);
+        AddLabel(M("section.actions", "<b>操作</b>", "<b>ACTIONS</b>"), 26);
 
-        AddActionRow("备份当前所有存档", "<color=#8fd6c4>复制</color>", "复制到 STEMFishDLC_Backups，不改原存档", () =>
+        AddActionRow(M("backup", "备份当前所有存档", "Back up all saves"),
+            "<color=#8fd6c4>" + UiText.T("common.browse", Lang.T("复制", "Copy")) + "</color>",
+            M("backup.desc", "复制到 STEMFishDLC_Backups，不改原存档", "Copy to STEMFishDLC_Backups; originals untouched"), () =>
         {
             int n = BackupAll();
-            if (_footer != null) _footer.text = n > 0 ? $"已备份 {n} 个存档。" : "备份失败，看日志。";
+            if (_footer != null) _footer.text = n > 0
+                ? string.Format(M("backup.done", "已备份 {0} 个存档。", "Backed up {0} saves."), n)
+                : M("backup.fail", "备份失败，看日志。", "Backup failed; check the log.");
             Refresh();
         });
 
-        AddActionRow("打开存档目录", "<color=#8fd6c4>浏览</color>", SaveDir, () =>
+        AddActionRow(M("opendir", "打开存档目录", "Open save folder"),
+            "<color=#8fd6c4>" + UiText.T("common.browse", Lang.T("浏览", "Browse")) + "</color>", SaveDir, () =>
         {
             try { Application.OpenURL("file://" + SaveDir.Replace("\\", "/")); } catch { }
         });
 
-        AddActionRow("打开备份目录", "<color=#8fd6c4>浏览</color>", BackupDir, () =>
+        AddActionRow(M("openbackup", "打开备份目录", "Open backup folder"),
+            "<color=#8fd6c4>" + UiText.T("common.browse", Lang.T("浏览", "Browse")) + "</color>", BackupDir, () =>
         {
             try
             {
@@ -986,14 +1054,16 @@ public static class ModMenu
 
         if (backups.Count > 0)
         {
-            AddLabel("<b>已有备份</b>   <color=#5a6672>点一行还原（会先把当前存档再备份一次）</color>", 26);
+            AddLabel(M("section.backups", "<b>已有备份</b>   <color=#5a6672>点一行还原（会先把当前存档再备份一次）</color>",
+                                          "<b>BACKUPS</b>   <color=#5a6672>click a row to restore (the current save is backed up first)</color>"), 26);
             backups.Sort();
             backups.Reverse();
             foreach (var b in backups)
             {
                 var file = b;
                 var name = Path.GetFileName(file);
-                AddActionRow(name, "<color=#8fd6c4>还原</color>", File.GetLastWriteTime(file).ToString("MM-dd HH:mm"), () => Restore(file));
+                AddActionRow(name, "<color=#8fd6c4>" + Lang.T("还原", "Restore") + "</color>",
+                    File.GetLastWriteTime(file).ToString("MM-dd HH:mm"), () => Restore(file));
             }
         }
     }
@@ -1006,7 +1076,7 @@ public static class ModMenu
         var le = rt.gameObject.AddComponent<LayoutElement>();
         le.preferredHeight = 40f; le.minHeight = 40f;
 
-        var cap = NewText("Cap", rt, "备注", 15, DimTxt);
+        var cap = NewText("Cap", rt, M("note", "备注", "Note"), 15, DimTxt);
         var crt = cap.rectTransform;
         crt.anchorMin = new Vector2(0, 0); crt.anchorMax = new Vector2(0, 1);
         crt.pivot = new Vector2(0, 0.5f);
@@ -1032,7 +1102,7 @@ public static class ModMenu
         txt.alignment = TextAlignmentOptions.Left;
         txt.raycastTarget = false;
 
-        var ph = NewText("Placeholder", area, "点击输入备注…", 15, new Color(0.42f, 0.47f, 0.52f, 1f));
+        var ph = NewText("Placeholder", area, M("note.placeholder", "点击输入备注…", "Click to add a note..."), 15, new Color(0.42f, 0.47f, 0.52f, 1f));
         var prt = ph.rectTransform;
         prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
         prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
@@ -1053,7 +1123,7 @@ public static class ModMenu
             input.onEndEdit.AddListener(v =>
             {
                 SaveNote(rel, v);
-                if (_footer != null) _footer.text = $"备注已保存：{rel}";
+                if (_footer != null) _footer.text = string.Format(M("note.saved", "备注已保存：{0}", "Note saved: {0}"), rel);
             });
         }
         catch (Exception e)
@@ -1108,7 +1178,7 @@ public static class ModMenu
         edge.anchoredPosition = Vector2.zero;
         AddImage(edge.gameObject, new Color(0.28f, 0.72f, 0.66f, 0.9f));
 
-        var title = NewText("Title", panel, "重命名存档", 20, new Color(0.62f, 0.94f, 0.88f, 1f));
+        var title = NewText("Title", panel, M("rename.title", "重命名存档", "Rename save"), 20, new Color(0.62f, 0.94f, 0.88f, 1f));
         var trt = title.rectTransform;
         trt.anchorMin = trt.anchorMax = new Vector2(0f, 1f);
         trt.pivot = new Vector2(0f, 1f);
@@ -1128,7 +1198,7 @@ public static class ModMenu
         var input = MakeInput(panel, new Vector2(24f, -76f), new Vector2(412f, 42f), note);
 
         // ---- 按钮 ----
-        DlgButton(panel, 24f, 120f, "保存备注", new Color(0.13f, 0.34f, 0.31f, 1f), () =>
+        DlgButton(panel, 24f, 120f, M("rename.note", "保存备注", "Save note"), new Color(0.13f, 0.34f, 0.31f, 1f), () =>
         {
             string v = input != null ? input.text : "";
             SaveNote(rel, v);
@@ -1137,12 +1207,12 @@ public static class ModMenu
             Refresh();
         });
 
-        DlgButton(panel, 156f, 120f, "删除存档", new Color(0.32f, 0.13f, 0.13f, 1f), () =>
+        DlgButton(panel, 156f, 120f, M("delete.title", "删除存档", "Delete save"), new Color(0.32f, 0.13f, 0.13f, 1f), () =>
         {
             if (_pendingDelete != fullPath)
             {
                 _pendingDelete = fullPath;
-                if (_footer != null) _footer.text = "再点一次「删除存档」确认（不可恢复）";
+                if (_footer != null) _footer.text = M("delete.confirm", "再点一次「删除存档」确认（不可恢复）", "Click \"Delete save\" again to confirm (cannot be undone)");
                 return;
             }
             DeleteSave(fullPath);
@@ -1150,7 +1220,7 @@ public static class ModMenu
             Refresh();
         });
 
-        DlgButton(panel, 288f, 100f, "取消", new Color(0.14f, 0.16f, 0.19f, 1f), CloseSaveDialog);
+        DlgButton(panel, 288f, 100f, UiText.T("common.cancel", Lang.T("取消", "Cancel")), new Color(0.14f, 0.16f, 0.19f, 1f), CloseSaveDialog);
 
         _saveDlg = root.gameObject;
     }
@@ -1197,7 +1267,7 @@ public static class ModMenu
         txt.alignment = TextAlignmentOptions.Left;
         txt.raycastTarget = false;
 
-        var ph = NewText("Placeholder", area, "给它起个名字…", 15, new Color(0.42f, 0.47f, 0.52f, 1f));
+        var ph = NewText("Placeholder", area, UiText.T("newrun.placeholder", Lang.T("给它起个名字…", "Give it a name...")), 15, new Color(0.42f, 0.47f, 0.52f, 1f));
         var prt = ph.rectTransform;
         prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
         prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
@@ -1233,12 +1303,12 @@ public static class ModMenu
             if (File.Exists(fullPath)) File.Delete(fullPath);
             var side = fullPath + ".json";
             if (File.Exists(side)) File.Delete(side);
-            if (_footer != null) _footer.text = "已删除：" + Path.GetFileName(fullPath);
+            if (_footer != null) _footer.text = M("delete.done", "已删除：", "Deleted: ") + Path.GetFileName(fullPath);
             Plugin.Log.LogInfo($"[STEMFishDLC] 已删除存档 {fullPath}");
         }
         catch (Exception e)
         {
-            if (_footer != null) _footer.text = "删除失败：" + e.Message;
+            if (_footer != null) _footer.text = M("delete.fail", "删除失败：", "Delete failed: ") + e.Message;
             Plugin.Log.LogWarning($"[STEMFishDLC] 删除存档失败: {e.Message}");
         }
     }
@@ -1262,9 +1332,9 @@ public static class ModMenu
         try
         {
             var side = svPath + ".json";
-            if (!File.Exists(side)) return "层数未知";
+            if (!File.Exists(side)) return M("layer.unknown", "层数未知", "Layer unknown");
             var root = JsonConvert.DeserializeObject<Dictionary<string, object>>(File.ReadAllText(side));
-            if (root == null) return "层数未知";
+            if (root == null) return M("layer.unknown", "层数未知", "Layer unknown");
 
             int biome = -1;
             if (root.TryGetValue("biome", out var bv) && bv != null)
@@ -1274,7 +1344,8 @@ public static class ModMenu
             if (root.TryGetValue("lastPlayedAtUnixMs", out var lv) && lv != null)
                 long.TryParse(lv.ToString(), out ms);
 
-            string layer = biome >= 0 ? $"第 {biome + 1} 层" : "层数未知";
+            string layer = biome >= 0 ? string.Format(M("layer.n", "第 {0} 层", "Layer {0}"), biome + 1)
+                                       : M("layer.unknown", "层数未知", "Layer unknown");
             if (ms > 0)
             {
                 var t = DateTimeOffset.FromUnixTimeMilliseconds(ms).ToLocalTime();
@@ -1282,7 +1353,7 @@ public static class ModMenu
             }
             return layer;
         }
-        catch { return "层数未知"; }
+        catch { return M("layer.unknown", "层数未知", "Layer unknown"); }
     }
 
     private static Dictionary<string, string> _notesCache;
@@ -1351,7 +1422,10 @@ public static class ModMenu
                 done++;
             }
             if (_footer != null)
-                _footer.text = done > 0 ? $"已还原到 {done} 处（原存档已先备份）。重启游戏生效。" : "没找到对应存档，未改动。";
+                _footer.text = done > 0
+                    ? string.Format(M("restore.done", "已还原到 {0} 处（原存档已先备份）。重启游戏生效。",
+                                                       "Restored {0} file(s); the current save was backed up first. Restart the game."), done)
+                    : M("restore.none", "没找到对应存档，未改动。", "No matching save found; nothing changed.");
             Plugin.Log.LogInfo($"[STEMFishDLC] 还原 {backupFile} → {done} 处");
             Refresh();
         }

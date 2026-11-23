@@ -34,7 +34,7 @@ public static class ItemText
     }
 
     public static string Dir => Path.Combine(Paths.PluginPath, "STEMFishDLC");
-    public static string Path_ => Path.Combine(Dir, "items.zh-CN.json");
+    public static string Path_ => Lang.File("items");
 
     private static readonly Dictionary<string, Entry> _file = new Dictionary<string, Entry>(StringComparer.Ordinal);
     private static readonly Dictionary<string, Entry> _builtin = new Dictionary<string, Entry>(StringComparer.Ordinal);
@@ -102,6 +102,7 @@ public static class ItemText
         {
             if (File.Exists(Path_)) return;
             if (_builtin.Count == 0) return;
+            if (Lang.IsEnglish) return;          // 英文模式不导出中文内置模板
 
             Directory.CreateDirectory(Dir);
             var d = new Dictionary<string, Entry>();

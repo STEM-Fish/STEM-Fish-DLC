@@ -192,8 +192,8 @@ public static class HudButton
             foreach (var tip in go.GetComponentsInChildren<UITooltip>(true))
             {
                 tip.skipLocale = true;
-                tip.tipName = "战术终端";
-                tip.tipDesc = "打开 STEM Fish 战术终端（F8）";
+                tip.tipName = UiText.T("hud.button.name", Lang.T("战术终端", "TACTICAL TERMINAL"));
+                tip.tipDesc = UiText.T("hud.button.desc", Lang.T("打开 STEM Fish 战术终端（F8）", "Open the STEM Fish tactical terminal (F8)"));
                 tip.localeName = "";
                 tip.localeDesc = "";
             }

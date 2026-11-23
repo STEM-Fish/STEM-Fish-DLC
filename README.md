@@ -10,7 +10,7 @@
 
 说明：是非官方MOD，此角色设定并不是 Casualties: Unknown 或 Gunsaw 原设定之中的。设定版权归开发者所有。但这不影响你可以免费获得这个 MOD 进行游玩，并可以任意进行开源的二次开发。详见 License。
 
-当前版本：**0.18.11**（插件 GUID：`com.stemfish.dlc`）
+当前版本：**0.22.0**（插件 GUID：`com.stemfish.dlc`）
 
 ---
 
@@ -46,6 +46,13 @@
 | **屏蔽器** | 剧情关键道具，**平时右键没有反应**。带着它下到第 10 层（拿到货物那一层）时会自动定住你，播完几段自言自语后让你选：拆芯片，还是留着。拆 → 脑损伤 + 头部出血 + 受伤音效，此后永久**无芯片**（会改变结局走向）；不拆 → 芯片留着、屏蔽器还在兜里，**这一层之内**还能再按一次，离开第 10 层就彻底失效。商人 / 物资箱 / 尸体遗留物都可能出 |
 | **MDRZ9 弹匣 / 7.62 散弹** | 自定义口径弹药与枪械。 |
 
+### 语言 / Language
+
+- 首次启动按**游戏语言**自动选择：英文游戏 → `en-US`，中文游戏 → `zh-CN`。
+- 也可以在 `BepInEx/config/com.stemfish.dlc.cfg` 的 `[General] Language` 里强制 `zh-CN` 或 `en-US`。
+- 四个文本表都有中英两份：`items.*.json` / `voice.*.json` / `lore.*.json` / `ui.*.json`；界面里原本硬编码的文字也已经搬进 `ui.*.json` 的 `strings` 段。
+- 英文版里，**全部档案 + 剧情关键台词 + 界面**是重写的；通用状态台词如果在英文表里没有，会保留**游戏自带的英文台词**，不会退回中文。
+
 ### 视觉与文本
 
 - **皮肤包** `EXP_STEMFISH_DLC`：主角的整套贴图（身体 / 头 / 血迹 / 眼睛状态）
@@ -59,10 +66,10 @@
 
 | 文件 | 内容 |
 |---|---|
-| `voice.zh-CN.json` | 台词库：`expand` 128 类 452 句（主角全部情境）/ `chatter` 10 类 / `lines` 7 类零散台词 |
-| `items.zh-CN.json` | 物品名与描述 |
-| `lore.zh-CN.json` | 战术终端档案（11 篇；`layer` 字段把每篇钉在 1~11 层，进到那一层才解锁；sf10 / sf11 的批注按芯片状态分「拆了 / 留着 / 没拿到」三版） |
-| `ui.zh-CN.json` | 界面文案：模式卡片、开局面板标题与说明 |
+| `voice.zh-CN.json` / `voice.en-US.json` | 台词库：`expand` / `chatter` / `lines`；英文版只收录剧情关键台词，其余保留游戏英文原声 |
+| `items.zh-CN.json` / `items.en-US.json` | 物品名与描述（含血袋不兼容提示） |
+| `lore.zh-CN.json` / `lore.en-US.json` | 战术终端档案（11 篇；`layer` 字段把每篇钉在 1~11 层；sf10 / sf11 的批注按芯片状态分三版） |
+| `ui.zh-CN.json` / `ui.en-US.json` | 界面文案：模式卡片、开局面板、MOD 管理页、战术终端、HUD 与存档提示 |
 
 ---
 
@@ -95,7 +102,7 @@ Casualties Unknown/
 └── winhttp.dll / doorstop_config.ini （BepInEx 自带）
 ```
 
-3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.18.10 =====` 即成功。
+3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.22.0 =====` 即成功。
 
 > 联机：可与 **Casualties: Together v5.4.0**（KrokMP 的续作）共存。
 > 进游戏前建议先在 `Settings > General` 里确认联机开关状态。
@@ -170,7 +177,7 @@ STEMFishDLC/
 
 | 段 | 内容 |
 |---|---|
-| `[General]` | 总开关、隔离其它 MOD、调试工具、红色血液、战利品落点修补 |
+| `[General]` | 总开关、语言（auto / zh-CN / en-US）、隔离其它 MOD、调试工具、红色血液、战利品落点修补 |
 | `[Run]` | 开局界面、负重上限倍率、怪物全局倍率 |
 | `[Spawn]` | 动态投放间隔 / 距离 / 每层上限 |
 | `[Loot]` | 弹药箱权重、每层数量、间距 |

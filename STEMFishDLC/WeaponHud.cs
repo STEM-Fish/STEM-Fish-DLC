@@ -92,7 +92,7 @@ public static class WeaponHud
         }
         catch (Exception e)
         {
-            if (_mode != null) _mode.text = "读取失败";
+            if (_mode != null) _mode.text = UiText.T("hud.readfail", Lang.T("读取失败", "READ FAILED"));
             Plugin.Log.LogWarning($"[STEMFishDLC] 武器 HUD 失败: {e.Message}");
         }
     }
@@ -106,7 +106,7 @@ public static class WeaponHud
 
         if (GunHandling.IsReloading)
         {
-            _ammo.text = $"<color=#4fc3a1>换弹 {GunHandling.ReloadRemaining:0.0}s</color>";
+            _ammo.text = "<color=#4fc3a1>" + string.Format(UiText.T("hud.reload", Lang.T("换弹 {0}s", "RELOAD {0}s")), GunHandling.ReloadRemaining) + "</color>";
             _mode.text = "";                        // 不再显示流程文字（会和弹药数字重叠）
             SetAllPips(PipEmpty);
             if (_chamberPip != null) _chamberPip.color = PipEmpty;
@@ -141,9 +141,9 @@ public static class WeaponHud
 
         // 底部只留极短的状态提示（避免溢出）
         string extra = "";
-        if (!gun.hasMag) extra = "  无弹匣";
-        else if (gun.racked) extra = "  枪机开";
-        if (gun.safe) extra += "  保险";
+        if (!gun.hasMag) extra = "  " + UiText.T("hud.nomag", Lang.T("无弹匣", "NO MAG"));
+        else if (gun.racked) extra = "  " + UiText.T("hud.racked", Lang.T("枪机开", "CHAMBER OPEN"));
+        if (gun.safe) extra += "  " + UiText.T("hud.safe", Lang.T("保险", "SAFE"));
         _damage.text = extra.TrimStart();
         _damage.color = string.IsNullOrEmpty(extra) ? new Color(0.62f, 0.68f, 0.70f, 1f) : PipWarn;
 
@@ -155,9 +155,9 @@ public static class WeaponHud
     {
         switch ((int)mode)
         {
-            case 0: return "泵动/栓动";
-            case 1: return "半自动";
-            default: return "全自动";
+            case 0: return UiText.T("hud.mode.pump", Lang.T("泵动/栓动", "PUMP/BOLT"));
+            case 1: return UiText.T("hud.mode.semi", Lang.T("半自动", "SEMI"));
+            default: return UiText.T("hud.mode.auto", Lang.T("全自动", "AUTO"));
         }
     }
 
@@ -173,7 +173,7 @@ public static class WeaponHud
 
     private static void ShowEmptyHand(Body body)
     {
-        _name.text = "空手";
+        _name.text = UiText.T("hud.unarmed", Lang.T("空手", "UNARMED"));
         if (_icon != null) _icon.enabled = false;
         SetPipsVisible(false);
         MeleeLine(body);
@@ -183,9 +183,12 @@ public static class WeaponHud
     private static void MeleeLine(Body body)
     {
         float cd = body.attackCooldown;
-        _ammo.text = cd > 0.01f ? $"<color=#d8a83e>冷却 {cd:0.00}s</color>" : "<color=#8fd6c4>就绪</color>";
-        _mode.text = "近战";
-        _damage.text = $"伤害 {MeleeDamage:0} · 范围 {MeleeDistance:0.#}";
+        _ammo.text = cd > 0.01f
+                ? "<color=#d8a83e>" + string.Format(UiText.T("hud.cooldown", Lang.T("冷却 {0}s", "COOLDOWN {0}s")), cd) + "</color>"
+                : "<color=#8fd6c4>" + UiText.T("hud.ready", Lang.T("就绪", "READY")) + "</color>";
+        _mode.text = UiText.T("hud.melee", Lang.T("近战", "MELEE"));
+        _damage.text = string.Format(UiText.T("hud.damage", Lang.T("伤害 {0}", "DMG {0}")), MeleeDamage)
+                + " · " + string.Format(UiText.T("hud.range", Lang.T("范围 {0}", "RANGE {0}")), MeleeDistance);
         _damage.color = new Color(0.62f, 0.68f, 0.70f, 1f);
     }
 

@@ -67,6 +67,18 @@ public static class DlcPanel
 
     public static bool Visible => _visible;
 
+    private static string M(string key, string zh, string en)
+    {
+        return UiText.T("dlc." + key, Lang.T(zh, en));
+    }
+
+    private static void RefreshTabNames()
+    {
+        TabNames[0] = M("tab.vitals", "体征", "VITALS");
+        TabNames[1] = M("tab.archive", "归档", "ARCHIVE");
+        TabNames[2] = M("tab.link", "链路", "LINK");
+    }
+
     // 任意"覆盖式面板"打开中（原版健康面板 / 制作面板 / 我们的终端）→ HUD 该让位
     // 暂停（ESC 菜单）时 HUD/终端都该让位 —— 和健康面板、制作面板一致
     public static bool AnyOverlayOpen => _visible || GamePanelOpen() || Plugin.IsPaused;
@@ -111,6 +123,7 @@ public static class DlcPanel
                 "战术终端面板缩放（1 = 780×640 原尺寸；默认 1.15 兼顾可读性和留白）").Value, 0.7f, 1.6f);
         }
         catch { }
+        RefreshTabNames();
         Plugin.Log.LogInfo($"[STEMFishDLC] 面板模块就绪（F8 / HUD 按钮开关，缩放 ×{Scale:0.00}）");
     }
 
@@ -230,7 +243,7 @@ public static class DlcPanel
         headerRt.anchoredPosition = Vector2.zero;
         AddImage(headerRt.gameObject, HeaderBg);
 
-        var title = NewText("Title", headerRt, "战术终端", 26, AccentColor);
+        var title = NewText("Title", headerRt, M("title", "战术终端", "TACTICAL TERMINAL"), 26, AccentColor);
         var trt = title.rectTransform;
         trt.anchorMin = new Vector2(0, 0); trt.anchorMax = new Vector2(1, 1);
         trt.offsetMin = new Vector2(20, 0); trt.offsetMax = new Vector2(-70, 0);
@@ -314,7 +327,8 @@ public static class DlcPanel
         footRt.pivot = new Vector2(0.5f, 0f);
         footRt.sizeDelta = new Vector2(-32, 36);
         footRt.anchoredPosition = new Vector2(0, 10);
-        var foot = NewText("Foot", footRt, "点击左下角图标可收起 · 所有数据仅存于本机", 15, DimText);
+        var foot = NewText("Foot", footRt, M("foot", "点击左下角图标可收起 · 所有数据仅存于本机",
+                "Click the lower-left icon to collapse · all data is stored locally"), 15, DimText);
         var frt = foot.rectTransform;
         frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
         frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
@@ -330,7 +344,7 @@ public static class DlcPanel
         var closeBtn = closeRt.gameObject.AddComponent<Button>();
         closeBtn.targetGraphic = closeImg;
         closeBtn.onClick.AddListener(() => { if (_visible) Toggle(); });
-        var closeTxt = NewText("X", closeRt, "关闭", 16, BodyText);
+        var closeTxt = NewText("X", closeRt, UiText.T("common.close", Lang.T("关闭", "Close")), 16, BodyText);
         var crt2 = closeTxt.rectTransform;
         crt2.anchorMin = Vector2.zero; crt2.anchorMax = Vector2.one;
         crt2.offsetMin = Vector2.zero; crt2.offsetMax = Vector2.zero;
@@ -431,8 +445,10 @@ public static class DlcPanel
         var body = PlayerCamera.main?.body;
         if (body == null)
         {
-            if (_barHeader != null) _barHeader.text = "<b>体征采样</b>   <color=#5a6672>等待信号</color>";
-            if (_barFooter != null) _barFooter.text = "<color=#5a6672>没有接到身体。终端在等。</color>";
+            if (_barHeader != null) _barHeader.text = M("vitals.waiting", "<b>体征采样</b>   <color=#5a6672>等待信号</color>",
+                "<b>VITALS</b>   <color=#5a6672>WAITING FOR SIGNAL</color>");
+            if (_barFooter != null) _barFooter.text = M("vitals.nobody", "<color=#5a6672>没有接到身体。终端在等。</color>",
+                "<color=#5a6672>No body connected. The terminal is waiting.</color>");
             return;
         }
 
@@ -441,49 +457,51 @@ public static class DlcPanel
             // 0) 负重（越高越糟）
             float encMax = body.maxEncumberance > 0.01f ? body.maxEncumberance : 1f;
             float encPct = body.totalEncumberance / encMax;
-            SetRow(0, "负重", encPct,
+            SetRow(0, M("row.encumbrance", "负重", "LOAD"), encPct,
                 $"{body.totalEncumberance:0.#}/{encMax:0.#}u   {Vitals.FormatRate(Vitals.EncumberanceRate, "u")}",
                 HighBad(encPct, 0.7f, 0.95f));
 
             // 1) 血容量（越低越糟）+ 临界倒计时
             float eta = Vitals.BloodCriticalEta();
-            string etaTxt = eta < 0f ? "" : $"   <color=#d05a5a>临界 {Vitals.FormatEta(eta)}</color>";
+            string etaTxt = eta < 0f ? "" : $"   <color=#d05a5a>" + M("vitals.critical", "临界", "CRITICAL") + $" {Vitals.FormatEta(eta)}</color>";
             float bvPct = body.bloodVolume / 100f;
-            SetRow(1, "血容量", bvPct,
+            SetRow(1, M("row.blood", "血容量", "BLOOD"), bvPct,
                 $"{body.bloodVolume:0.0}/100   {Vitals.FormatRate(Vitals.BloodVolumeRate, "")}{etaTxt}",
                 LowBad(bvPct, 0.55f, 0.35f));
 
             // 2) 心跳失常（越高越糟）
-            string fibState = body.fibrillationRising ? "  <color=#d05a5a>恶化中</color>" : "";
+            string fibState = body.fibrillationRising ? "  <color=#d05a5a>" + M("vitals.worsening", "恶化中", "WORSENING") + "</color>" : "";
             float fibPct = body.fibrillationProgress / Vitals.FibrillationCritical;
-            SetRow(2, "心跳失常", fibPct,
+            SetRow(2, M("row.fibrillation", "心跳失常", "ARRHYTHMIA"), fibPct,
                 $"{body.fibrillationProgress:0.00}/1.00   {Vitals.FormatRate(Vitals.FibrillationRate, "/s")}{fibState}",
                 HighBad(fibPct, 0.4f, 0.75f));
 
             // 3) 体温（偏离 37 越远越糟）
             float tp = Mathf.InverseLerp(28f, 42f, body.temperature);
-            SetRow(3, "体温", tp,
+            SetRow(3, M("row.temperature", "体温", "TEMP"), tp,
                 $"{body.temperature:0.0}°C   偏差 {body.tempDiffFromNormal:+0.0;-0.0;0}°   {Vitals.FormatRate(Vitals.TemperatureRate, "°")}",
                 TempColor(body.temperature));
 
             // 4) 出血速率（越高越糟）
             float bleedNorm = body.totalBleedSpeed / (Vitals.BleedCritical * 1.5f);
-            SetRow(4, "出血速率", bleedNorm,
+            SetRow(4, M("row.bleeding", "出血速率", "BLEED RATE"), bleedNorm,
                 $"{body.totalBleedSpeed:0.000}   凝血 {Safe(() => body.bleedClottingSpeed, 0f):0.00}   内出血 {body.internalBleeding:0.0}",
                 HighBad(bleedNorm, 0.6f, 0.9f));
 
             // 5) 意识（越低越糟；RiseRate/FallRate 是 static 字段）
             float consPct = body.consciousness / 100f;
-            SetRow(5, "意识", consPct,
+            SetRow(5, M("row.consciousness", "意识", "CONSCIOUSNESS"), consPct,
                 $"{body.consciousness:0.0}/100   回升系数 {Body.consciousnessRiseRate:0.00} / 下降系数 {Body.consciousnessFallRate:0.00}   Δ {Vitals.FormatRate(Vitals.ConsciousnessRate, "")}",
                 LowBad(consPct, 0.6f, 0.3f));
 
-            _barHeader.text = "<b>体征采样</b>   <color=#5a6672>变化速率由本机自行推算</color>";
+            _barHeader.text = M("vitals.rate", "<b>体征采样</b>   <color=#5a6672>变化速率由本机自行推算</color>",
+                "<b>VITALS</b>   <color=#5a6672>rates calculated locally</color>");
 
             int depth = WorldGeneration.world != null ? WorldGeneration.world.biomeDepth : 0;
             var skills = body.GetComponent<Skills>();
             string skillTxt = skills != null ? $"STR {skills.STR} · RES {skills.RES} · INT {skills.INT}" : "";
-            _barFooter.text = $"<color=#5a6672>当前深度 {depth} 层    {skillTxt}    采样间隔 0.2 秒</color>";
+            _barFooter.text = string.Format(M("vitals.depth", "<color=#5a6672>当前深度 {0} 层    {1}    采样间隔 0.2 秒</color>",
+                "<color=#5a6672>Depth {0}    {1}    sample interval 0.2 s</color>"), depth, skillTxt);
         }
         catch (Exception e)
         {
@@ -556,7 +574,7 @@ public static class DlcPanel
             if (_bodyText != null)
             {
                 _bodyText.gameObject.SetActive(true);
-                _bodyText.text = "读取数据失败: " + e.Message;
+                _bodyText.text = M("vitals.readfail", "读取数据失败: ", "DATA READ FAILED: ") + e.Message;
             }
         }
     }
@@ -768,8 +786,11 @@ public static class DlcPanel
         var entries = LoreData.Entries;
         if (_codexHeader != null)
             _codexHeader.text = entries.Count == 0
-                ? "<b>扫描归档</b>   <color=#d05a5a>本机存储为空</color>"
-                : $"<b>扫描归档</b>   {LoreData.ReadCount}/{LoreData.Total}   <color=#5a6672>下一层会自动补上一条</color>";
+                ? M("archive.empty", "<b>扫描归档</b>   <color=#d05a5a>本机存储为空</color>",
+                    "<b>ARCHIVE</b>   <color=#d05a5a>LOCAL STORAGE EMPTY</color>")
+                : string.Format(M("archive.next", "<b>扫描归档</b>   {0}/{1}   <color=#5a6672>下一层会自动补上一条</color>",
+                    "<b>ARCHIVE</b>   {0}/{1}   <color=#5a6672>the next entry will be added on the next layer</color>"),
+                    LoreData.ReadCount, LoreData.Total);
 
         // 默认选中：上次看的 → 第一篇已读的 → 第一篇
         int sel = IndexOfCodex(_codexSelected);
@@ -794,7 +815,7 @@ public static class DlcPanel
 
             label.text = read
                 ? $"{i + 1:00}  {(string.IsNullOrEmpty(e.kind) ? "" : $"[{e.kind}] ")}{e.title}"
-                : $"{i + 1:00}  <color=#5a6672>未解锁</color>";
+                : $"{i + 1:00}  <color=#5a6672>" + M("archive.locked", "未解锁", "LOCKED") + "</color>";
             label.color = read ? (selected ? AccentColor : BodyText) : DimText;
             label.fontSize = 15;
             // ★ 行高是固定的 40px：标题一长就会自动换行，第二行直接压到下一行条目上。
@@ -859,7 +880,8 @@ public static class DlcPanel
         var entry = LoreData.Get(_codexSelected);
         if (entry == null)
         {
-            _codexReaderText.text = "<color=#5a6672>本机存储为空。</color>";
+            _codexReaderText.text = M("archive.empty2", "<color=#5a6672>本机存储为空。</color>",
+                "<color=#5a6672>Local storage is empty.</color>");
             ResetCodexScroll();
             return;
         }
@@ -867,10 +889,10 @@ public static class DlcPanel
         if (!LoreData.IsRead(entry.id))
         {
             _codexReaderText.text =
-                $"<size=22><color=#5a6672>■■■ 未解锁 ■■■</color></size>\n\n" +
-                "<color=#5a6672>这条只有编号，没有内容。\n" +
-                "往下走，下一层的时候它会自己补上。\n" +
-                "（停在这一层不会推进。）</color>";
+                M("archive.locked.title", "<size=22><color=#5a6672>■■■ 未解锁 ■■■</color></size>",
+                    "<size=22><color=#5a6672>■■■ LOCKED ■■■</color></size>") + "\n\n" +
+                M("archive.locked.body", "<color=#5a6672>这条只有编号，没有内容。\n往下走，下一层的时候它会自己补上。\n（停在这一层不会推进。）</color>",
+                    "<color=#5a6672>This entry has only a number, no content.\nGo deeper; it will fill itself in on the next layer.\n(Staying on this layer will not advance it.)</color>");
             ResetCodexScroll();
             return;
         }
@@ -1023,16 +1045,16 @@ public static class DlcPanel
             // ★ 这一页只放"设备读数"，不放任何内心活动。
             //   主角的感想、吐槽、判断全部在「归档」页里（那是他的笔记本），
             //   链路页是他摊开手掌看的仪表——仪表不会抒情。
-            sb.Append("<size=22><color=#33c6b8>链路</color></size>\n\n");
-            sb.Append("<color=#5a6672>上行</color>        <color=#d8a83e>芯片直连</color>\n");
-            sb.Append("<color=#5a6672>本地总线</color>    <color=#4fc3a1>正常</color>\n");
-            sb.Append("<color=#5a6672>遥测回报</color>    <color=#d05a5a>持续</color>\n");
-            sb.Append("<color=#5a6672>定位</color>        <color=#d8a83e>活动</color>\n");
-            sb.Append($"<color=#5a6672>本机切断</color>    <color=#d05a5a>不可用</color>\n");
-            sb.Append($"<color=#5a6672>外设电源</color>    <color=#e6efef>{(BodyPowerWord())}</color>\n");
+            sb.Append("<size=22><color=#33c6b8>" + M("tab.link", "链路", "LINK") + "</color></size>\n\n");
+            sb.Append("<color=#5a6672>" + M("link.up", "上行", "UPLINK") + "</color>        <color=#d8a83e>" + M("link.chip", "芯片直连", "CHIP DIRECT") + "</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.bus", "本地总线", "LOCAL BUS") + "</color>    <color=#4fc3a1>" + M("link.normal", "正常", "NORMAL") + "</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.telemetry", "遥测回报", "TELEMETRY") + "</color>    <color=#d05a5a>" + M("link.continuous", "持续", "CONTINUOUS") + "</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.position", "定位", "POSITION") + "</color>        <color=#d8a83e>" + M("link.active", "活动", "ACTIVE") + "</color>\n");
+            sb.Append($"<color=#5a6672>{M("link.cut", "本机切断", "LOCAL CUT")}</color>    <color=#d05a5a>{M("link.unavailable", "不可用", "UNAVAILABLE")}</color>\n");
+            sb.Append($"<color=#5a6672>{M("link.power", "外设电源", "AUX POWER")}</color>    <color=#e6efef>{(BodyPowerWord())}</color>\n");
 
-            sb.Append("\n<size=22><color=#33c6b8>作业计时</color></size>\n\n");
-            sb.Append($"<color=#5a6672>当前层</color>      <color=#e6efef>{depth}</color>\n");
+            sb.Append("\n<size=22><color=#33c6b8>" + M("link.timer", "作业计时", "WORK TIMER") + "</color></size>\n\n");
+            sb.Append($"<color=#5a6672>{M("link.layer", "当前层", "CURRENT LAYER")}</color>      <color=#e6efef>{depth}</color>\n");
             float spent = 0f, limit = 0f;
             try
             {
@@ -1047,8 +1069,8 @@ public static class DlcPanel
             {
                 float left = Mathf.Max(0f, limit - spent);
                 string col = left <= 0f ? "d05a5a" : (left < limit * 0.25f ? "d8a83e" : "8fd6c4");
-                sb.Append($"<color=#5a6672>本层已用</color>    <color=#e6efef>{FmtTime(spent)}</color>\n");
-                sb.Append($"<color=#5a6672>本层剩余</color>    <color=#{col}>{FmtTime(left)}</color>\n");
+                sb.Append($"<color=#5a6672>{M("link.spent", "本层已用", "TIME IN LAYER")}</color>    <color=#e6efef>{FmtTime(spent)}</color>\n");
+                sb.Append($"<color=#5a6672>{M("link.left", "本层剩余", "TIME LEFT")}</color>    <color=#{col}>{FmtTime(left)}</color>\n");
             }
             else
             {
@@ -1057,27 +1079,32 @@ public static class DlcPanel
 
             if (body != null)
             {
-                sb.Append("\n<size=22><color=#33c6b8>颅内单元</color></size>\n\n");
-                sb.Append($"<color=#5a6672>状态</color>        <color=#4fc3a1>在线</color>\n");
-                sb.Append($"<color=#5a6672>载体</color>        <color=#e6efef>还能走</color>\n".Replace("还能走", VitalsWord(body)));
-                sb.Append($"<color=#5a6672>扩展插槽</color>    <color=#5a6672>0 / 2 已用</color>\n");
+                sb.Append("\n<size=22><color=#33c6b8>" + M("link.chipunit", "颅内单元", "CRANIAL UNIT") + "</color></size>\n\n");
+                sb.Append($"<color=#5a6672>{M("link.status", "状态", "STATUS")}</color>        <color=#4fc3a1>{M("link.online", "在线", "ONLINE")}</color>\n");
+                sb.Append($"<color=#5a6672>{M("link.carrier", "载体", "CARRIER")}</color>        <color=#e6efef>{VitalsWord(body)}</color>\n");
+                sb.Append($"<color=#5a6672>{M("link.slots", "扩展插槽", "EXPANSION SLOTS")}</color>    <color=#5a6672>{M("link.used", "0 / 2 已用", "0 / 2 USED")}</color>\n");
             }
 
-            sb.Append("\n<size=22><color=#33c6b8>本地缓存</color></size>\n\n");
-            sb.Append("<color=#5a6672>来源    [损坏]</color>\n");
-            sb.Append("<color=#c8d4d4>「继续下潜。样本采集未达配额。」</color>\n");
-            sb.Append("<color=#5a6672>「深度不达标。已记录。」</color>\n");
-            sb.Append("<color=#5a6672>「无需回复。回复通道不为此编号开放。」</color>\n");
-            sb.Append("<color=#5a6672>——以上三条之后再无新条目。</color>\n");
+            sb.Append("\n<size=22><color=#33c6b8>" + M("link.cache", "本地缓存", "LOCAL CACHE") + "</color></size>\n\n");
+            sb.Append("<color=#5a6672>" + M("link.source", "来源    [损坏]", "SOURCE    [CORRUPTED]") + "</color>\n");
+            sb.Append("<color=#c8d4d4>" + M("link.cache1", "「继续下潜。样本采集未达配额。」",
+                "\"Continue descending. Sample quota not met.\"") + "</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.cache2", "「深度不达标。已记录。」",
+                "\"Depth requirement not met. Logged.\"") + "</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.cache3", "「无需回复。回复通道不为此编号开放。」",
+                "\"No reply required. Reply channel is not open to this number.\"") + "</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.cache4", "——以上三条之后再无新条目。",
+                "—No further entries after these three.") + "</color>\n");
 
             sb.Append("\n<color=#4a5560>──────────────</color>\n");
-            sb.Append("<color=#5a6672>未登记信号　1 条（无法解析，格式不属于本设备）</color>\n");
+            sb.Append("<color=#5a6672>" + M("link.signal", "未登记信号　1 条（无法解析，格式不属于本设备）",
+                "Unregistered signals: 1 (unreadable; format does not belong to this device)") + "</color>\n");
 
             _linkText.text = sb.ToString();
         }
         catch (Exception e)
         {
-            if (_linkText != null) _linkText.text = "<color=#d05a5a>自检失败：" + e.Message + "</color>";
+            if (_linkText != null) _linkText.text = "<color=#d05a5a>" + M("link.selffail", "自检失败：", "SELF-CHECK FAILED: ") + e.Message + "</color>";
         }
     }
 
@@ -1095,7 +1122,7 @@ public static class DlcPanel
         {
             var body = PlayerCamera.main != null ? PlayerCamera.main.body : null;
             if (body == null) return "——";
-            return "自持";
+            return M("link.selfpowered", "自持", "SELF-POWERED");
         }
         catch { return "——"; }
     }
@@ -1105,13 +1132,13 @@ public static class DlcPanel
     {
         try
         {
-            if (body.consciousness < 25f) return "意识模糊";
-            if (body.bloodVolume < 55f) return "失血";
-            if (body.temperature < 34.5f) return "体温过低";
-            if (body.temperature > 39f) return "体温过高";
-            if (body.totalBleedSpeed > 0.01f) return "还在流";
-            if (body.totalEncumberance > body.maxEncumberance) return "背得太多了";
-            return "还能走";
+            if (body.consciousness < 25f) return M("state.confused", "意识模糊", "CONFUSED");
+            if (body.bloodVolume < 55f) return M("state.bleeding", "失血", "BLEEDING");
+            if (body.temperature < 34.5f) return M("state.hypothermia", "体温过低", "HYPOTHERMIA");
+            if (body.temperature > 39f) return M("state.hyperthermia", "体温过高", "HYPERTHERMIA");
+            if (body.totalBleedSpeed > 0.01f) return M("state.stillbleeding", "还在流", "STILL BLEEDING");
+            if (body.totalEncumberance > body.maxEncumberance) return M("state.overloaded", "背得太多了", "OVERLOADED");
+            return M("link.walking", "还能走", "STILL WALKING");
         }
         catch { return "——"; }
     }

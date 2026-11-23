@@ -1,0 +1,202 @@
+{
+  "_note": "Story-critical lines are translated here. If an expand key is absent, FishVoice preserves the game's own English line for that situation, so the base game's native reactions fill the gaps.",
+  "expand": {
+    "cargo1": ["I... I think this is it... right...? Right...?"],
+    "cargo2": ["This... doesn't look like a battery... What... what are you going to...?"],
+    "cargoimpale": ["Aaaagh! What the—?! This shouldn't—?!"],
+    "cargoimpale2": ["Ugh... okay... I... I feel... something being pumped into me...? I feel... lighter."],
+    "cargoimpale3": ["I... I actually did it... All right... let's not get carried away... I think I can use that drill pod over there to get back. Head for the surface."],
+    "endlessloop0": ["...Why...? How did I...? Just now... why am I back here...? Huh? What just happened...?"],
+    "endlessloop1": ["...This is not what I expected at all... I don't know what else I can do... Fine. Ugh. Third time's the charm, maybe...?"],
+    "endlessloop2": ["Ugh, aaaagh!! What am I supposed to do?! Damn it... fuck that heart... Huh... I have to keep going down anyway if I want to live. What a mess."],
+    "endlessloop3": ["Fine. I can't get out, can I? I... I think I'm used to it."],
+    "endlessloopdefault": ["Oh, layer after layer... round and round..."],
+    "endpodexamine": ["The cargo... matters..."],
+    "labcommentcalm": [
+      "Nnh... aah... they will pay for this...",
+      "They have to pay for this...",
+      "This is... what you deserve...",
+      "I am. Done. With all of it.",
+      "Go to hell. All of you. Die, die, die...",
+      "It ends here.",
+      "Bastard. Bastard. Bastard. You pieces of shit.",
+      "No one will remember you.",
+      "(Nothing is going to stop me.)",
+      "You trash don't even count as opponents..."
+    ],
+    "labcommentcombat": [
+      "FUCK YOU!! FUCK ALL OF YOU!!! FUCK EVERYONE!!!",
+      "I WANT TO WATCH YOU STOP BREATHING!!!",
+      "DIE!!!",
+      "I HAVE HAD ENOUGH!!",
+      "I'M FLIPPING THE TABLE, I QUIT!!",
+      "GRAAAAAH!!",
+      "WHO THE HELL DO YOU THINK YOU ARE?!",
+      "NO ONE WILL CRY FOR YOU!!!",
+      "YOU WILL PAY FOR THIS!!",
+      "YOU'RE A HUNDRED YEARS TOO EARLY TO KILL ME!!!",
+      "YOU ANIMALS IN HUMAN CLOTHES!!",
+      "GO TO HELL!!!"
+    ],
+    "labenter": ["(Play along for now. Wait for a chance, then take him. I know the ducts here. They'll get me out.)"],
+    "labresponse": ["(Keep talking... a little more, and you're done.)"],
+    "labshoot": ["AAAAAGH!! DIE—!"],
+    "labthink1": ["(Now. Hmm... if only I had a gun...)"],
+    "labthink2": ["(I could... kill him. Blow out that thing in the ceiling... through the grate... freedom...?)"],
+    "labthink2chip": ["(I could... no. The chip is still there. My life is still in their hands. ...Go!)"],
+    "wwmr": [
+      "All right... I'm here... I finally made it. Come on, the objective should be somewhere around here.",
+      "Uh... the target... should be in this area... stop wandering, let's go.",
+      "I made it... did I...? Hmm... I think the thing is close... let's end this."
+    ],
+    "wwmrwrongway": ["I think I went the wrong way... I should head toward the source of those strange pulses..."],
+    "ascententer": ["Looks like it can only take me this far... no way back. Let's go."],
+    "selfdestruct": [
+      "...That sound. Beep. Beep.",
+      "Wait. Wait wait—",
+      "I didn't press it. I didn't press it!",
+      "...Oh. So this is how it ends.",
+      "...Fine. Come on."
+    ],
+    "drillend": [
+      "...That took long enough.",
+      "Still ringing in my ears.",
+      "This drill has no soundproofing at all.",
+      "Bottom. ...Probably."
+    ],
+    "wakeup": [
+      "...I really wish I weren't looking at this cave.",
+      "Awake. Then... keep going.",
+      "Mm... let's get the gear together."
+    ],
+    "bigpain": [
+      "Fuck fuck fuck fuck—",
+      "Hhh— I— aaaagh!!",
+      "Ow, ow... aagh!!...",
+      "Aah... fuck! Aah!!"
+    ],
+    "dying": [
+      "No... why... why...",
+      "Don't... I want a little longer...",
+      "So this is it... dying...",
+      "So cold... so this is what it feels like."
+    ],
+    "lastmoments": ["...Who... why...", "...Huh..."],
+    "seecorpse": [
+      "...Fell to death.",
+      "Another one.",
+      "Hey. ...Hey?",
+      "...Not breathing.",
+      "I don't know him. But I know who made him.",
+      "...Sorry. I can't bury you.",
+      "This way of dying... I don't like looking at it.",
+      "I came out the same way.",
+      "...Don't look at me."
+    ],
+    "breakcorpse": [
+      "...Sorry.",
+      "I need what you're carrying. You don't need it anymore.",
+      "Ugh... this feeling doesn't wash off.",
+      "...He's already dead...",
+      "...Fuck.",
+      "Last time. ...I say that every time."
+    ],
+    "murderregret": [
+      "...Why.",
+      "He was thrown down here too.",
+      "I just... killed one of my own.",
+      "My hands are shaking. Why did I do that? Why?",
+      "...Sorry. I don't know you.",
+      "...Sorry."
+    ],
+    "refuse": ["...", "No.", "Forget it. Stop.", "...Don't.", "Not doing it.", "I won't do this.", "Ugh."],
+    "suicide": [
+      "Enough. This is where it stops.",
+      "It's over.",
+      "...Sorry. I can't do it.",
+      "Hurry up.",
+      "Okay.",
+      "This will be quicker.",
+      "I'm so fucking done. Really.",
+      "Here.",
+      "This is it. ...Finally.",
+      "It's all the same.",
+      "I tried.",
+      "Goodbye. ...Really goodbye."
+    ],
+    "selfharm": [
+      "...Nn... heh...",
+      "Pain— pain means it's working...",
+      "Haha...",
+      "Good... nn...",
+      "...One more... good... hhh...",
+      "Fuck... ...feels good.",
+      "I know this is wrong. I know. ...Again.",
+      "No one... hhh... haha..."
+    ]
+  },
+  "chatter": {
+    "idle": [
+      "Being made by someone else is a rare experience, I suppose.",
+      "We're all down here to die. Can't even rest a little longer...",
+      "What if I— like those people— could 'go to work'?",
+      "This place... mm... hard to describe.",
+      "This place isn't the worst... but... can I go home?",
+      "...I want to go back.",
+      "The people who sent us down here definitely don't want to sleep on a calcium carbonate mattress.",
+      "I think I know why they only send us down.",
+      "Something's moving— is there wind in here?",
+      "Someone must be watching me— even if it's not them—"
+    ],
+    "depth": [
+      "All these dangerous, annoying things.",
+      "At least I'm getting closer.",
+      "Feels like I've been walking a long time... but I'm not there yet.",
+      "How much farther?",
+      "Keep going."
+    ],
+    "corpse": [
+      "...Another body... No one will count these casualties.",
+      "Every time I see one, I feel... just take something and go.",
+      "He just died earlier than me.",
+      "Another one. ...Rest.",
+      "Rest in peace... pity I don't have time to bury you."
+    ],
+    "lowhp": [
+      "No... I want a little longer... does it have to be now...",
+      "Still walking... don't stop.",
+      "...Anyone?"
+    ],
+    "pain": ["Ow... ugh, bear with it.", "Aaaagh!"],
+    "hungry": ["I might need to top up.", "...Hungry. Find something to eat."],
+    "thirsty": ["...I should watch my water.", "Water... find water first."],
+    "cold": ["Cold... fur's standing up.", "If I don't do something, the cold will get me."],
+    "wound": ["Ow... hhh...", "Careful... Focus..."],
+    "radiation": [
+      "Which genius put nuclear waste down here?",
+      "I'm pretty sure DNA doesn't like this stuff."
+    ]
+  },
+  "lines": {
+    "reload": [
+      "Come on... please...",
+      "Reload!",
+      "Magazine... this... okay...",
+      "Reloading!",
+      "Come on... come on..."
+    ],
+    "ammobox": ["Box is open. Take it."],
+    "lorefound": ["Find somewhere to sit and read the tablet later."],
+    "loremore": ["...One more."],
+    "corpse": ["...He was thrown down here too."],
+    "clothing": ["There."],
+    "starterkit": ["Make it last. This is already plenty."],
+    "jammer": [
+      "When I came into this layer, the box in my pocket was still cold. The thing in my nape was hot. There was no cargo in my belly yet, but I already knew it was below.",
+      "The file was clear: to shut the chip up, I need the jammer. It works on one layer only, once only, and this is that layer.",
+      "Cut it out and I may not finish the climb. Keep it and I carry their voice up with me, hand over the cargo, and let them decide how much longer I live.",
+      "I have lived in the lab all my life and never chosen anything for myself. They told me to stand, I stood. They told me to lie down, I lay down. They told me to go down, I went down.",
+      "This time, I want to choose. Cut, or keep."
+    ]
+  }
+}

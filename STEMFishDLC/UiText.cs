@@ -35,13 +35,16 @@ public static class UiText
         new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
     private static bool _loaded;
+    private static bool _initTried;
 
     public static void Init(Plugin plugin)
     {
+        if (_initTried) return;
+        _initTried = true;
         try
         {
-            // 和 voice.zh-CN.json / items.zh-CN.json 放一起：plugins/STEMFishDLC/
-            FilePath = Path.Combine(Path.Combine(BepInEx.Paths.PluginPath, "STEMFishDLC"), "ui.zh-CN.json");
+            // 和 voice / items / lore 放一起：plugins/STEMFishDLC/
+            FilePath = Lang.File("ui");
 
             if (File.Exists(FilePath)) Load(FilePath);
             else Plugin.Log.LogInfo($"[STEMFishDLC] 没有 {Path.GetFileName(FilePath)}，界面文案用代码内置默认值");
@@ -87,6 +90,12 @@ public static class UiText
             _loaded = false;
             Plugin.Log.LogWarning($"[STEMFishDLC] 界面文案解析失败（用默认值）: {e.Message}");
         }
+    }
+
+    // 取一条通用 UI 文案（ui.<lang>.json 的 strings 段）
+    public static string T(string key, string fallback)
+    {
+        return Get("strings", key, fallback);
     }
 
     // 取一条文案；没有就用 fallback

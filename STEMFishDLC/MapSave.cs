@@ -409,6 +409,14 @@ public static class MapSave
             // ② 分块批量刷新（逐格 SetTile 会卡好几秒）
             int chunksDrawn = RefreshChunks(w, arr, width, height);
 
+            // ★ 爆炸留下的方块伤害贴花是独立对象，不会随 worldBlocks 写回而消失；
+            //   不清掉就会在读档后留下"鬼影"。ClearBlockDamages 会 DestroySprite + 清表。
+            try { w.ClearBlockDamages(); } catch { }
+
+            // ★ 读档后把建筑实体（商人舱 / 箱子 / 机器）的旋转和速度归零，
+            //   避免它们踩在新地形上歪倒。方块碰撞体已经在上一步刷新过了。
+            try { ResetBuildings(); } catch { }
+
             // ③ 角色坐标
             Vector2 p = _pos;
             try
@@ -462,6 +470,37 @@ public static class MapSave
         {
             _blocks = null;
         }
+    }
+
+    // 读档后把建筑实体的物理状态摆正：零速度、零角速度、旋转归零。
+    // 不保存它们的位置（原版格式没有），但至少不会歪着嵌进地形。
+    private static void ResetBuildings()
+    {
+        int n = 0;
+        try
+        {
+            var all = UnityEngine.Object.FindObjectsOfType<BuildingEntity>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                var b = all[i];
+                if (b == null) continue;
+                try
+                {
+                    var rb = b.GetComponent<Rigidbody2D>();
+                    if (rb != null)
+                    {
+                        rb.velocity = Vector2.zero;
+                        rb.angularVelocity = 0f;
+                        rb.rotation = 0f;
+                    }
+                    b.transform.rotation = Quaternion.identity;
+                    n++;
+                }
+                catch { }
+            }
+        }
+        catch { }
+        if (n > 0) Plugin.Log.LogInfo($"[STEMFishDLC] 建筑实体已摆正：{n} 个（读档后防歪倒）");
     }
 
     // 按 CHUNKSIZE 分块，一次性提交整块（比逐格快两个数量级）
@@ -518,6 +557,10 @@ public static class MapSave
                         Array.Copy(tiles, t2, n);
                         map.SetTiles(p2, t2);
                     }
+
+                    // ★ 只 SetTiles 不够：ChunkUpdated 负责刷新碰撞体 / ChunkScript。
+                    //   不触发它，读档后旧碰撞体还在，商人舱会陷进/卡在新地形里歪掉。
+                    try { w.ChunkUpdated[cx, cy]?.Invoke(); } catch { }
                     drawn++;
                 }
             }

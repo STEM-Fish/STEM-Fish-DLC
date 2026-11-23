@@ -99,7 +99,7 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 | 文件 | 作用 |
 |---|---|
 | `ModState.cs` | MOD 启用/停用、调试工具开关、MOD 隔离（写预加载器配置）。隔离必须重启才生效 |
-| `ItemText.cs` | 物品名/描述的**外部 JSON 表**（`items.zh-CN.json`），缺 key 时退回代码内置名 |
+| `ItemText.cs` | 物品名/描述的**外部 JSON 表**（`items.<lang>.json`，`Lang.File` 找不到英文就回退中文），缺 key 时退回代码内置名 |
 | `FishLocalization.cs` | 把自制物品的名字注入游戏的 `Locale` 系统 |
 
 ### 3.3 物品与装备
@@ -163,7 +163,7 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 
 | 文件 | 作用 |
 |---|---|
-| `LoreData.cs` | 档案数据：加载 `lore.zh-CN.json`、已读记录、`noteLater` 按层显示；`UnlockForDepth(depth)` 按每篇的 `layer` 字段精确发放（没配就退回 `NextUnread`） |
+| `LoreData.cs` | 档案数据：加载 `lore.<lang>.json`、已读记录、`noteLater` 按层显示；`UnlockForDepth(depth)` 按每篇的 `layer` 字段精确发放（没配就退回 `NextUnread`）；英文档案同样走 `variants` |
 | `LoreNote.cs` | 世界里的纸片投放（每局一张，捡到解锁一篇） |
 | `LoreProgress.cs` | **按层自动解锁**：每下一层调 `LoreData.UnlockForDepth(depth)`，只发这一层该出的那篇 |
 | `FishVoice.cs` | 台词库：`expand`（原版情境混入）+ `chatter`（主动独白） |
@@ -180,7 +180,8 @@ cp "$SRC"/items.zh-CN.json "$SRC"/voice.zh-CN.json "$SRC"/lore.zh-CN.json "$DST/
 | `MenuArt.cs` | 主菜单 Experiment 立绘的配套美术：用新图 alpha 现场生成白色悬停轮廓（半分辨率膨胀），写进 `MenuExperimentBlink.outlineSprites[]` + `outline.sprite`；文字/点击框按新造型 alpha 包围盒重摆（原版关系：文字=角色中心+120、顶部+43，点击框=中心+132）。`[Skin] MenuAutoLayout` / `MenuOutlineRadius` / `MenuTextOffsetX/Y` | **轮廓在 `MenuExperimentBlink` 里**（`outlineSprites` / `outline`），别按类型名过滤掉带 `Blink` 的组件；生成的 sprite 名不能和皮肤包 PNG 同名，否则被 LoadingArt 换回主立绘 |
 | `BloodRed.cs` | 主角的血改成人类（守卫）红：每 0.5s 扫 `PlayerCamera.main.body`，① 肢体材质里绑 `limbBlood` 贴图的属性换成皮肤包的红色版 ② 黄血粒子 startColor 改成 `HumanBlood` 的 (0.717,0,0.057) ③ `BleedParticle.isHuman=true` + `wallBleed/groundBleed` 换 human 预制体 ④ 截肢小游戏 `bloodImage.color` 乘红 | **黄血是三处独立的东西**，只改材质颜色没用（0.19.2 之前的坑）。肢体材质每帧会被 `FurBloodUpdate` 写 `_BloodOverlay`，所以要改的是**贴图**；贴图属性名是 shader graph 哈希，只能按「当前贴图名叫 limbBlood」反查。别挂 `Limb.Awake` 的全局 postfix，那会把敌人也染红 |
 | `CombatFeel.cs` | 生物手感：**挂在伤害入口 `SpiderHandler.AnimalHit(float)` 的后置**（不是碰撞！），受伤才喷黄血 + 小型生物被顶飞（方向=玩家→生物，`stunTime` 0.4s） | 以前挂 `OnCollisionEnter2D` + 「撞到 Item + 相对速度」猜子弹，生物互撞/撞墙都会喷血；`AnimalHit` 由子弹/近战/炮塔/无人机统一调用 |
-| `UiText.cs` | 界面文案外置：读 `plugins/STEMFishDLC/ui.zh-CN.json`，覆盖 `RunConfig.All` 的模式 label/desc/perks 和开局界面主要文字；文件缺失就用代码默认值 | 改文案不用重编译，重启生效 |
+| `UiText.cs` | 界面文案外置：读 `plugins/STEMFishDLC/ui.<lang>.json`，覆盖 `RunConfig.All` 的模式 label/desc/perks；`strings` 段给所有硬编码 UI 用（`UiText.T(key, fallback)`） | 改文案不用重编译，重启生效 |
+| `Lang.cs` | 语言选择：`[General] Language = auto / zh-CN / en-US`；`auto` 读 `Locale.currentLangName`（English / 简体中文），读不到时默认中文；`Lang.File(base)` 优先当前语言，缺文件回退 `zh-CN` | ⚠ 类里的 `File(string)` 会遮蔽 `System.IO.File`，内部要用 `System.IO.File.Exists` |
 | `Jammer.cs` | 剧情道具「屏蔽器」：平时右键无反应；带着它进第 10 层（`[Items] JammerDepth`）时自动暂停 + 播 `voice.zh-CN.json` 的 `lines.jammer` + 弹「拆/留」；拆 = 脑损伤 + 头部出血 + `Body.DoGoreSound()` + 永久无芯片；留 = 芯片不动、道具不消耗，本层内还能再按，离开该层后彻底失效 | **只在 `biomeDepth == JammerDepth` 生效**；暂停是借 `PlayerCamera.SetTimeScale(Paused)`，时间停住比 patch 输入稳；界面 120s 无操作按「留」 |
 | `Hearing.cs` | 战术耳塞：听力保护（拦截 `GunScript.Fire` 增量）+ 全局闷声（覆写 `SoundCutoff`） | 读不到 mixer 值时**必须放弃覆盖**，否则会把受损听力"治好" |
 | `PlayerCarry.cs` | 主角负重上限倍率：`Body.HandlePeriodicChecks` 的 prefix+postfix，只对玩家把 `maxEncumberance ×Mult` 并重算 `overEncumberance` | ⚠ 原版那段包在 `if (halfSecondCheckTime > 0.5)` 里，postfix 里无条件乘会**每帧乘一次 → 指数爆炸**；必须用 prefix 记住前值、比对"这次真的重算过"再乘 |
@@ -413,6 +414,11 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 | 读档后往下跳一层（第 11 层存档读进结局层） | 原版 `SaveGame` 写 `biome = biomeDepth + 1`，`TryLoadGame` 读回来直接 `biomeDepth = biome`，差一层。原版是"进层式"存档所以不觉得错；我们在 `TryLoadGame` 后置里把层号掰回 `.map` 记的值 |
 | `biomeDepth == 11` 就进实验室结局 | `Body.PlaceBody()` 里 `biomeDepth == 11` → `ENDLABSPAWN`；`== 10` 是"最后一层从底部往上找地面"，其余层从顶部往下找 |
 | 原版在最后一层存档会把 biome 夹成 1 | `SaveGame`：`if (biome >= amountOfLayers) biome = 1`。所以列表层号不能只信 `save.sv`，要读我们 `.map` 头里的深度 |
+| 读档后爆炸鬼影 / 商人舱歪倒 | ① `Tilemap.SetTiles` **不会**触发 `ChunkUpdated`，碰撞体/`ChunkScript` 还是旧的 → 补发 `w.ChunkUpdated[cx,cy]?.Invoke()`；② 爆炸的方块伤害贴花是独立 `BlockDamage` 对象，`worldBlocks` 写回不会清 → `w.ClearBlockDamages()`；③ 建筑实体按新地形重新落地会歪 → `ResetBuildings` 零速度/零角速度/旋转归零 |
+| 关掉 DLC 后还有 mod 台词 | `FishVoice.SayLine / Sequence / RandomLine` 入口补 `if (!ModState.Enabled) return`；否则残留调用会绕过 `Plugin.TickAll` 的开关 |
+| 主菜单双描边 | `MenuArt` 只换 `outline.sprite` 不换 `outline` 的 RectTransform，旧美术的框和新轮廓错位 → 把主立绘的 anchor/pivot/sizeDelta/anchoredPosition/localScale 抄给 outline Image；alpha 阈值用 `>0` 而不是 `>24`，否则抗锯齿边缘会留一圈透明缝 |
+| 血袋提示怎么覆盖原版 | `Locale.GetOther(id+"dsc")` 内部走 `Locale.GetString(key,3)`，所以 `FishLocalization` 的 `GetString` postfix 能接住；原版已有翻译时 `Map` 不生效，要用 `Force` / `ForceText` 无条件覆盖。名称键是 `bloodbag` / `bloodbaghuman`，描述键加 `dsc` |
+| 英文台词不用全量翻译 | `FishVoice.GetCharacter_Postfix` 在 `ReplaceAll=true` 且 key 不存在时**保留原版** `__result`；英文 `voice.en-US.json` 只放剧情关键情境，通用反应交给游戏英文原声。**绝不能返回空列表**：`TalkDelayed → PickRandom` 会抛异常，剧情协程会断 |
 | UnityPy + TypeTree 读 `WorldGeneration` 全是垃圾 | 生成的树字段对齐不对（`read_str out of bounds`）。要么原始字节扫 PPtr，要么运行时 dump |
 | 原版角色身高 | `PlayerCamera.Start`：`SetCharDetails(Random.Range(130,161) * body.heightMultiplier, …)`，**仅新开局**（`!SaveSystem.loadedRun`）。健康面板格式 `{height}cm \| {age}y \| #{id}`（`WoundView.SetCharDetails`），`cInfo = [height, age, id, ver]`。三个角色 heightMultiplier：EXPie 1.0 / Milky 0.8 / 第三位 1.1（`bloodScale` 同值） |
 | 缩放 `Body.transform.localScale` 会让角色悬浮 | 试过（0.19.0，已回滚）。肢体 Collider2D / HingeJoint2D 会一起放大，但落地基准（脚底接触地面）没有同步补偿，物理求解器把人撑在空中 |
@@ -430,6 +436,6 @@ dotnet run -c Release -- ../../bodypart.png ../../STEMFishDLC/textures/doll_atla
 
 ## 8. 版本
 
-当前 **v0.21.1**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
+当前 **v0.22.0**。版本号在 `Plugin.cs` 的 `[BepInPlugin]` 和 `Log.LogInfo` 两处，以及 `STEMFishDLC.csproj` 的 `<Version>`，改的时候一起改。
 
 主要里程碑见 `.workbuddy/memory/` 下的日志。

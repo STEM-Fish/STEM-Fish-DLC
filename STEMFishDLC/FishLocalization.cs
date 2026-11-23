@@ -41,12 +41,25 @@ public static class FishLocalization
             harmony.Patch(target, postfix: new HarmonyMethod(postfix));
             var info = Harmony.GetPatchInfo(target);
             _patched = true;
+
+            if (Lang.IsEnglish)
+            {
+                Force["minilaserdrill"] = "Experimental Particle Cutter";
+                Force["minilaserdrilldsc"] = "A prototype that leaked out of the company lab: the laser drill's focusing head replaced with a particle-cutting array. Rock cut by it vaporizes outright; the price is that it is now genuinely heavy.";
+            }
+
             Plugin.Log.LogInfo($"[STEMFishDLC] 本地化注入 hook 完成 | postfix={info?.Postfixes?.Count ?? -1}");
         }
         catch (Exception e)
         {
             Plugin.Log.LogError($"[STEMFishDLC] 本地化 hook 失败: {e}");
         }
+    }
+
+    // 强制覆盖原版已有文本（血袋提示、激光钻改名等）
+    public static void ForceText(string key, string text)
+    {
+        if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(text)) Force[key] = text;
     }
 
     // 注册一个物品的名字 + 描述（描述键约定为 id + "dsc"）

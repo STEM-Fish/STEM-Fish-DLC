@@ -96,7 +96,8 @@ public static class Jammer
         if (w == null || depth != TriggerDepth)
         {
             // 不可用：既不消耗也不打开界面（走完第 10 层它就彻底没用了）
-            SaveSlots.Toast("没有反应。它只对一层有效，而这里不是那一层。");
+            SaveSlots.Toast(UiText.T("jammer.wronglayer", Lang.T("没有反应。它只对一层有效，而这里不是那一层。",
+                "Nothing happens. It only works on one layer, and this is not that layer.")));
             Plugin.Log.LogInfo($"[STEMFishDLC] 屏蔽器：当前层 {depth} 不是可用层，无反应");
             return;
         }
@@ -212,21 +213,33 @@ public static class Jammer
         if (withLines) SetLog("");
         else
         {
-            SetLog("<color=#c9d3d8>屏蔽器还在兜里，凉的。</color>\n\n" +
-                   "芯片还埋在后颈，离你只有一层皮的深度；你还能再按一次，可这一层不会等你太久。");
+            SetLog(UiText.T("jammer.keep.text",
+                Lang.T("<color=#c9d3d8>屏蔽器还在兜里，凉的。</color>\n\n芯片还埋在后颈，离你只有一层皮的深度；你还能再按一次，可这一层不会等你太久。",
+                       "<color=#c9d3d8>The jammer is still in your pocket, cold.</color>\n\nThe chip is still under your nape, one layer of skin away. You can press it once more, but this layer will not wait long.")));
             ShowButtons();
         }
     }
 
     private static List<string> FallbackScript()
     {
+        if (Lang.IsEnglish)
+        {
+            return new List<string>
+            {
+                "When I came into this layer, the box in my pocket was still cold. The thing in my nape was hot. There was no cargo in my belly yet, but I already knew it was below.",
+                "The file was clear: to shut the chip up, I need the jammer. It works on one layer only, once only, and this is that layer.",
+                "Cut it out and I may not finish the climb. Keep it and I carry their voice up with me, hand over the cargo, and let them decide how much longer I live.",
+                "I have lived in the lab all my life and never chosen anything for myself. They told me to stand, I stood. They told me to lie down, I lay down. They told me to go down, I went down.",
+                "This time, I want to choose. Cut, or keep.",
+            };
+        }
         return new List<string>
         {
-            "背上的东西刚钉进去，血还在渗。终端那行字已经改成了 RETURN--BASE。",
-            "他们把我钉在箱子底下，让我往上走。到了地面，箱子交货，我回收。",
-            "兜里那个东西在发烫。屏蔽器。换它的时候，我以为自己会用得上。",
-            "它只在这一层有用。芯片换层就换密钥，过了这层，它就是块塑料。",
-            "所以现在就选。拆，还是留。",
+            "我进这一层的时候，兜里这个盒子还是凉的；后颈里那块东西在发热，肚子里还没有货，可我已经知道它就在下面。",
+            "文件上写得很清楚，要让芯片闭嘴，得先有屏蔽器；它只认一层，只够一次，而这一层就是那一层。",
+            "拆了它，我可能走不完剩下的台阶；不拆，我就得带着他们的声音上去，把货交到他们手里，再让他们决定我还能活多久。",
+            "我在实验室里活了这么久，从来没有自己选过什么；他们让我站我就站，让我躺我就躺，让我往下走我就往下走。",
+            "这一次，我想自己选。拆，还是留。",
         };
     }
 
@@ -322,7 +335,8 @@ public static class Jammer
 
             try { if (WorldGeneration.runSettings != null) WorldGeneration.runSettings.Remove("stemfish_jammer_declined"); } catch { }
             Plugin.Log.LogInfo("[STEMFishDLC] 芯片已拆除：脑损伤 + 头部出血，永久无芯片模式");
-            SaveSlots.Toast("芯片拆掉了。从现在起，没人给你计时了。");
+            SaveSlots.Toast(UiText.T("jammer.cut.toast", Lang.T("芯片拆掉了。从现在起，没人给你计时了。",
+                "The chip is out. No one is timing you anymore.")));
         }
         catch (Exception e)
         {
@@ -344,7 +358,8 @@ public static class Jammer
         catch { }
 
         Plugin.Log.LogInfo("[STEMFishDLC] 玩家选择保留芯片：屏蔽器留在背包（本层内仍可再用）");
-        SaveSlots.Toast("你把屏蔽器塞回兜里。它只在这一层有用。");
+        SaveSlots.Toast(UiText.T("jammer.keep.toast", Lang.T("你把屏蔽器塞回兜里。它只在这一层有用。",
+                "You put the jammer back in your pocket. It only works on this layer.")));
         Close(false);
     }
 
@@ -506,10 +521,10 @@ public static class Jammer
             var bar = NewImage(prt, "Bar", new Color(0.30f, 0.81f, 1.00f, 1f));
             SetRect(bar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0f), new Vector2(3f, 620f));
 
-            var title = MakeText(prt, "Title", "第 10 层", 24f, new Color(0.87f, 0.92f, 0.94f, 1f));
+            var title = MakeText(prt, "Title", UiText.T("jammer.title", Lang.T("第 10 层", "LAYER 10")), 24f, new Color(0.87f, 0.92f, 0.94f, 1f));
             SetRect(title.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -20f), new Vector2(500f, 32f));
 
-            var hint = MakeText(prt, "Hint", "空格 / 左键 跳过", 13f, new Color(0.42f, 0.50f, 0.55f, 1f));
+            var hint = MakeText(prt, "Hint", UiText.T("jammer.hint", Lang.T("空格 / 左键 跳过", "SPACE / LMB TO SKIP")), 13f, new Color(0.42f, 0.50f, 0.55f, 1f));
             hint.alignment = TextAlignmentOptions.TopRight;
             SetRect(hint.rectTransform, new Vector2(1f, 1f), new Vector2(-28f, -24f), new Vector2(240f, 24f));
 
@@ -518,9 +533,9 @@ public static class Jammer
             _log.lineSpacing = 6f;
             SetRect(_log.rectTransform, new Vector2(0f, 1f), new Vector2(28f, -70f), new Vector2(804f, 420f));
 
-            _btnRemove = MakeButton(prt, "拆掉芯片", new Vector2(-190f, -250f), new Vector2(340f, 56f),
+            _btnRemove = MakeButton(prt, UiText.T("jammer.cut", Lang.T("拆掉芯片", "CUT IT OUT")), new Vector2(-190f, -250f), new Vector2(340f, 56f),
                        new Color(0.26f, 0.10f, 0.10f, 1f), new Color(0.95f, 0.62f, 0.58f, 1f), ChooseRemove);
-            _btnKeep = MakeButton(prt, "留着它", new Vector2(190f, -250f), new Vector2(340f, 56f),
+            _btnKeep = MakeButton(prt, UiText.T("jammer.keep", Lang.T("留着它", "KEEP IT")), new Vector2(190f, -250f), new Vector2(340f, 56f),
                        new Color(0.12f, 0.15f, 0.18f, 1f), new Color(0.62f, 0.70f, 0.74f, 1f), ChooseKeep);
 
             _btnRemove.SetActive(false);

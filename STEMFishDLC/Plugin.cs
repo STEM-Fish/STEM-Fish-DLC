@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.21.1")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.22.0")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,13 +37,15 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.21.1 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.22.0 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
 
-        // ② 总开关 + MOD 管理界面 —— 无论启用与否都要在
+        // ② 总开关 + 语言 + 界面文案 + MOD 管理界面 —— 无论启用与否都要在
         ModState.Init(this);
+        Lang.Init(this);
+        UiText.Init(this);
         ModMenu.Init(this);
 
         try
@@ -76,7 +78,6 @@ public class Plugin : BaseUnityPlugin
         PlayerSkills.Init(this);    // 初始技能（新开局拉高 STR/RES/INT）
         PlayerCarry.Init(this);     // 负重上限倍率（同等力量比 EXPie 更能背）
         BodyProportion.Init(this);  // 体型：按 1.70m 放大外观（必须在 FishSkin 之前）
-        UiText.Init(this);          // 界面文案外置（ui.zh-CN.json，覆盖模式卡文字）
         RunConfig.Init(this);       // 开局难度（含动态刷怪 SpawnDirector）
         NewRunPanel.Init(this);     // 我们自己的投放（难度）界面
         SaveSlots.Init(this);       // 命名多存档（槽位 + 存档点自动存档 + 存档键）

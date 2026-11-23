@@ -336,7 +336,7 @@ public static class FishVoice
 
         try
         {
-            string path = Path.Combine(Path.Combine(Paths.PluginPath, "STEMFishDLC"), "voice.zh-CN.json");
+            string path = Lang.File("voice");
             if (!File.Exists(path)) return;
 
             var stamp = File.GetLastWriteTime(path);
@@ -356,6 +356,7 @@ public static class FishVoice
     //  这样加句、改句只改 json，不用重新编译。
     public static string RandomLine(string key, string fallback)
     {
+        if (!ModState.Enabled) return fallback;
         try
         {
             if (!string.IsNullOrEmpty(key) &&
@@ -372,6 +373,7 @@ public static class FishVoice
     // 按顺序取一整段台词（剧情序列用，不随机；key 不存在返回 null）
     public static List<string> Sequence(string key)
     {
+        if (!ModState.Enabled) return null;
         try
         {
             if (!string.IsNullOrEmpty(key) &&
@@ -385,6 +387,7 @@ public static class FishVoice
     // 让 Talker 说一句指定台词（换弹等即时反馈用，绕过分类冷却）
     public static void SayLine(string text)
     {
+        if (!ModState.Enabled) return;
         try
         {
             if (string.IsNullOrEmpty(text)) return;
@@ -449,8 +452,7 @@ public static class FishVoice
     {
         try
         {
-            string dir = Path.Combine(Paths.PluginPath, "STEMFishDLC");
-            string path = Path.Combine(dir, "voice.zh-CN.json");
+            string path = Lang.File("voice");
             if (!File.Exists(path))
             {
                 Plugin.Log.LogWarning($"[STEMFishDLC] 台词库不存在: {path}");
@@ -481,8 +483,16 @@ public static class FishVoice
     // 无 json 时的内建保底台词
     private static void BuildDefaults()
     {
-        _chatter["idle"] = new List<string> { "……记录：我还在。", "这里安静得让人不安。" };
-        _chatter["lowhp"] = new List<string> { "不行……我还不能停在这里。" };
+        if (Lang.IsEnglish)
+        {
+            _chatter["idle"] = new List<string> { "...Log: still here.", "It is too quiet down here." };
+            _chatter["lowhp"] = new List<string> { "No... I can't stop here." };
+        }
+        else
+        {
+            _chatter["idle"] = new List<string> { "……记录：我还在。", "这里安静得让人不安。" };
+            _chatter["lowhp"] = new List<string> { "不行……我还不能停在这里。" };
+        }
         Plugin.Log.LogWarning("[STEMFishDLC] 使用内建保底台词");
     }
 }

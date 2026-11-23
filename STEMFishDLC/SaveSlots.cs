@@ -520,7 +520,7 @@ public static class SaveSlots
 
         if (!InWorld(out var w))
         {
-            if (!auto) Toast("不在局内，没有可保存的进度");
+            if (!auto) Toast(UiText.T("save.notinrun", Lang.T("不在局内，没有可保存的进度", "Not in a run; nothing to save.")));
             return false;
         }
 
@@ -529,8 +529,8 @@ public static class SaveSlots
         {
             if (auto) return false;
             string id = CreateSlot(DefaultName(RunConfig.Current), RunConfig.Current);
-            if (id == null) { Toast("新建存档失败，看日志"); return false; }
-            Toast($"这个模式没有存档，已新建「{CurrentName}」");
+            if (id == null) { Toast(UiText.T("save.createnewfail", Lang.T("新建存档失败，看日志", "Failed to create a save; check the log."))); return false; }
+            Toast(string.Format(UiText.T("save.created", Lang.T("这个模式没有存档，已新建「{0}」", "This mode had no save; created \"{0}\".")), CurrentName));
         }
 
         _busy = true;
@@ -546,7 +546,7 @@ public static class SaveSlots
             catch (Exception e)
             {
                 Plugin.Log.LogWarning($"[STEMFishDLC] SaveSystem.SaveGame 失败: {e}");
-                Toast("存档失败：" + e.Message);
+                Toast(UiText.T("save.fail", Lang.T("存档失败：", "Save failed: ")) + e.Message);
                 return false;
             }
             finally
@@ -556,14 +556,14 @@ public static class SaveSlots
 
             if (!SyncFromGameSave())
             {
-                Toast("存档写入了，但复制到槽位失败（看日志）");
+                Toast(UiText.T("save.copyfail", Lang.T("存档写入了，但复制到槽位失败（看日志）", "Save written, but copying to the slot failed (check the log).")));
                 return false;
             }
 
             string name = CurrentName;
             Plugin.Log.LogInfo($"[STEMFishDLC] {(auto ? "自动" : "手动")}存档完成：「{name}」层 {MetaDepth()} 时长 {TimeText(RunTimeOfCurrent())}");
             // 存档只给一条底部提示，不说台词（v0.18.8 按作者要求去掉）
-            Toast((auto ? "已自动保存：" : "已保存：") + name);
+            Toast((auto ? UiText.T("save.autosaved", Lang.T("已自动保存：", "Auto-saved: ")) : UiText.T("save.saved", Lang.T("已保存：", "Saved: "))) + name);
             return true;
         }
         finally { _busy = false; }
@@ -625,7 +625,7 @@ public static class SaveSlots
         var m = ReadMeta(id);
         if (m == null)
         {
-            Toast("存档信息读不出来");
+            Toast(UiText.T("save.readfail", Lang.T("存档信息读不出来", "Could not read the save info.")));
             return false;
         }
 
@@ -653,7 +653,7 @@ public static class SaveSlots
         catch (Exception e)
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] 还原存档文件失败: {e.Message}");
-            Toast("还原存档失败：" + e.Message);
+            Toast(UiText.T("save.restorefail", Lang.T("还原存档失败：", "Restore failed: ")) + e.Message);
             return false;
         }
 
@@ -668,7 +668,7 @@ public static class SaveSlots
         var pre = PreRunScript.instance;
         if (pre == null)
         {
-            Toast("主菜单脚本不在，无法载入");
+            Toast(UiText.T("save.nopreturn", Lang.T("主菜单脚本不在，无法载入", "Main-menu script missing; cannot load.")));
             return false;
         }
 
@@ -686,7 +686,7 @@ public static class SaveSlots
         catch (Exception e)
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] LoadRun 失败: {e.Message}");
-            Toast("载入失败：" + e.Message);
+            Toast(UiText.T("save.loadfail", Lang.T("载入失败：", "Load failed: ")) + e.Message);
             return false;
         }
     }
@@ -769,10 +769,11 @@ public static class SaveSlots
     {
         if (s == null) return "";
         string mode = string.IsNullOrEmpty(s.modeLabel) ? (s.mode ?? "?") : s.modeLabel;
-        string when = string.IsNullOrEmpty(s.savedAt) ? "未保存" : s.savedAt;
+        string when = string.IsNullOrEmpty(s.savedAt) ? UiText.T("save.unsaved", Lang.T("未保存", "Not saved")) : s.savedAt;
         string data = s.hasData
-            ? $"{TimeText(s.runTime)} · 第 {s.depth + 1} 层 · {s.itemCount} 件物品"
-            : "还没写过档";
+            ? string.Format(UiText.T("save.slotinfo", Lang.T("{0} · 第 {1} 层 · {2} 件物品", "{0} · Layer {1} · {2} items")),
+                TimeText(s.runTime), s.depth + 1, s.itemCount)
+            : UiText.T("save.neverwritten", Lang.T("还没写过档", "Never saved"));
         return $"{mode} · {data} · {when}";
     }
 
