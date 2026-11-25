@@ -563,10 +563,24 @@ public static class ModMenu
         return null;
     }
 
+    /// <summary>强制收掉面板：别的界面要独占鼠标时先调它，别留全屏遮罩。</summary>
+    public static void ForceHide()
+    {
+        _visible = false;
+        try { if (_root != null && _root.activeSelf) _root.SetActive(false); } catch { }
+    }
+
     public static void Update()
     {
         if (_root == null) { _visible = false; return; }
-        if (!_visible) return;
+        if (!_visible)
+        {
+            // ★ 关着的时候也要保证根节点是隐藏的：
+            //   语言切换会走 Refresh → 可能重建 _root，新节点默认 activeSelf=true，
+            //   全屏黑底 + GraphicRaycaster 会一直挡在主菜单前面（整屏变暗、点不动）。
+            if (_root.activeSelf) _root.SetActive(false);
+            return;
+        }
 
         if (_animT < 1f)
         {
@@ -839,6 +853,23 @@ public static class ModMenu
                 _pEnabled = ModState.Enabled;
                 _pIsolate = ModState.Isolate;
                 Refresh();
+            });
+
+        AddLabel(M("section.general", "<b>通用</b>   <color=#5a6672>对所有存档生效</color>",
+                                      "<b>GENERAL</b>   <color=#5a6672>applies to every save</color>"), 26);
+        AddActionRow(M("language", "文本语言", "Text language"),
+            "<color=#8fd6c4>" + Lang.ModeLabel() + "</color>",
+            M("language.desc", "点击切换：跟随游戏 → 中文 → English（完整生效需重启游戏）",
+                               "Click to cycle: Follow game → 中文 → English (restart for full effect)"),
+            () =>
+            {
+                Lang.CycleMode();
+                Refresh();
+                if (_footer != null)
+                    _footer.text = string.Format(
+                        M("language.saved", "语言已改为 {0} · 重启游戏后全部生效",
+                                            "Language set to {0} · restart the game for full effect"),
+                        Lang.ModeLabel());
             });
 
         AddLabel(M("section.modules", "<b>模块</b>   <color=#5a6672>点击切换</color>",

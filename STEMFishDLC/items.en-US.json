@@ -48,11 +48,11 @@
     "desc": "An emergency jammer of unknown origin. No maker's mark on the shell, only a small stamped number on the bottom: M-114. It can deaden the chip inside a small radius and let a blade finish the last few centimeters. The battery is single-use and matches the key of exactly one layer. Take it to the bottom and you will understand. Miss that layer and it is a piece of plastic."
   },
   "bloodbag": {
-    "name": "Blood Bag (incompatible with SF-07)",
-    "desc": "A 0.75L plastic bag with an autoinjector at the end. Injects 375mL on use. Use in the inventory to draw blood from yourself.\n\n⚠ SF-07's blood does not match a standard experiment blood bag. Transfusion causes severe nausea, fever, and rejection. Do not use it on SF-07."
+    "name": "Blood Bag",
+    "desc": "A 0.75L plastic bag with an autoinjector at the end. Injects 375mL on use. Use in the inventory to draw blood from yourself.\n\n<color=#E05A5A>⚠ SF-07's blood does not match a standard experiment blood bag. Transfusion causes severe nausea, fever, and rejection. Do not use it on SF-07.</color>"
   },
   "bloodbaghuman": {
-    "name": "Red Blood Bag (incompatible with SF-07)",
-    "desc": "A 0.75L plastic bag with an autoinjector at the end. Injects 375mL on use. Use in the inventory to draw blood from yourself. There are traces of red on it.\n\n⚠ Even a red blood bag is not a full match for SF-07. Transfusion causes severe nausea, fever, and rejection. Do not use it on SF-07."
+    "name": "Red Blood Bag",
+    "desc": "A 0.75L plastic bag with an autoinjector at the end. Injects 375mL on use. Use in the inventory to draw blood from yourself. There are traces of red on it.\n\n<color=#E05A5A>⚠ Even a red blood bag is not a full match for SF-07. Transfusion causes severe nausea, fever, and rejection. Do not use it on SF-07.</color>"
   }
 }

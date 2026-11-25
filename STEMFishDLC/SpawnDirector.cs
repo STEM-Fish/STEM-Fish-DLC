@@ -178,6 +178,11 @@ public static class SpawnDirector
         {
             if (basObj == null) return true;
 
+            // 原版角色 / 教程：一行都不改，原版刷多少就是多少
+            // （这里只是"不修改参数"，不是拦截原版投放）
+            if (CharacterSelect.Current != CharacterSelect.Sf07) return true;
+            if (CharacterSelect.IsTutorial()) return true;
+
             // 禁用名单优先：急速下坠不刷黑暗潜行者 / 洞穴蜱虫
             if (IsBanned(basObj.name)) return false;
 
@@ -253,12 +258,36 @@ public static class SpawnDirector
         }
     }
 
+    /// <summary>
+    /// 原版角色开局：把生成期倍率 / 禁用名单 / 动态投放全部归零，刷怪量改回原版。
+    /// 由 StarterKit 的局入口调用 —— 上一局（SF-07）留下的 SpawnMul、bans
+    /// 不会跨局复用，否则选原版角色也会按我们模式的倍率刷怪。
+    /// </summary>
+    public static void ResetToVanilla()
+    {
+        SpawnMul = 1f;
+        Density = 0f;
+        Dynamic = false;
+        _banLower.Clear();
+        RebuildAllowed();
+
+        _timer = 2f;
+        _entered = false;
+        _spawnedLayer = 0;
+        _lastWorld = null;
+        _lastDepth = -9999;
+        _alive.Clear();
+
+        Plugin.Log.LogInfo("[STEMFishDLC] 刷怪参数已恢复原版（当前不是 SF-07）");
+    }
+
     private static int MaxAlive(float density)
         => Mathf.Clamp(MaxAliveBase + Mathf.RoundToInt(density * MaxAlivePerMul), 1, 40);
 
     public static void Tick()
     {
         if (!Enabled || !Dynamic || Density <= 0.01f) return;
+        if (!CharacterSelect.IsPlayerSf07()) return;      // 动态刷怪是 SF-07 的难度调整
 
         Body body = null;
         try

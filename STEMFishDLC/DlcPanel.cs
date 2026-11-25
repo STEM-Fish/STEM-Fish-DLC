@@ -132,6 +132,7 @@ public static class DlcPanel
     // ==========================================================================
     public static void Toggle()
     {
+        if (!CharacterSelect.IsPlayerSf07()) return;   // 战术终端是 SF-07 的芯片界面
         if (Plugin.IsPaused && !_visible) return;   // 暂停中不新开终端
         if (_root == null) Build();
 
@@ -162,8 +163,21 @@ public static class DlcPanel
     // 因为"按 ESC 暂停"而被临时藏起来（取消暂停后自动恢复）
     private static bool _hiddenByPause;
 
+    /// <summary>强制收掉终端（全屏根节点，留在主菜单会挡鼠标）。</summary>
+    public static void ForceHide()
+    {
+        _visible = false;
+        try { if (_root != null && _root.activeSelf) _root.SetActive(false); } catch { }
+    }
+
     public static void Update()
     {
+        if (!CharacterSelect.IsPlayerSf07())
+        {
+            if (_root != null && _root.activeSelf) { _root.SetActive(false); _visible = false; }
+            return;
+        }
+
         Vitals.Tick();                          // 速率采样（关闭面板时也采，打开即有数据）
 
         // 与健康面板/制作面板一致：ESC 暂停时终端必须隐藏，取消暂停后恢复

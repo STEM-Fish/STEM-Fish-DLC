@@ -61,6 +61,8 @@ public static class GunHandling
 
     public static void Update()
     {
+        if (!CharacterSelect.IsPlayerSf07()) return;      // R 键智能换弹是 SF-07 专属
+
         TickPendingRack();                       // 先把"推回枪机"这一步补齐
 
         if (_reloading) { TickReload(); return; }

@@ -200,6 +200,12 @@ public static class FishSkin
             var pc = PlayerCamera.main;
             var body = pc != null ? pc.body : null;
             if (body == null) return;
+
+            // ★ v0.23：只在「选的是 SF-07」时换皮。
+            //   以前是无条件替换，导致选 Milky / Dune / 原版 EXPie 也被套上 SF-07 的外观。
+            //   Tag 由 CharacterSelect.Spawn_Prefix 打上（选角索引 3）。
+            if (!CharacterSelect.IsSf07(body)) return;
+
             Apply(body.gameObject);
         }
         catch (Exception e)

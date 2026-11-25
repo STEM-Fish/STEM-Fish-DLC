@@ -46,6 +46,12 @@ public static class HudButton
     {
         try
         {
+            if (!CharacterSelect.IsPlayerSf07())
+            {
+                if (_clone != null && _clone.activeSelf) _clone.SetActive(false);
+                return;
+            }
+
             if (_clone != null)
             {
                 // 健康 / 制作 / 终端面板打开时让位（原版 HUD 也是这个行为）

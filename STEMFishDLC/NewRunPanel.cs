@@ -38,6 +38,7 @@ public static class NewRunPanel
     private static int _failBuild;
     private static readonly List<Button> _cards = new List<Button>();
     private static RectTransform _slotContent;
+    private static RectTransform _stage;      // 1920×1080 设计舞台（等比缩放到父 Canvas）
 
     // ---------------- 配色 ----------------
     private static readonly Color BgCol = new Color(0.024f, 0.031f, 0.041f, 0.988f);
@@ -100,6 +101,20 @@ public static class NewRunPanel
         catch { }
     }
 
+    /// <summary>强制收掉模式面板 + 弹窗（弹窗是全屏 dim，留着会压暗并吞掉点击）。</summary>
+    public static void ForceHide()
+    {
+        try { if (_root != null && _root.activeSelf) _root.SetActive(false); } catch { }
+        try { if (_dialog != null) UnityEngine.Object.Destroy(_dialog); } catch { }
+        _dialog = null;
+        _dialogInput = null;
+        _pendingMode = null;
+        _pendingRename = null;
+        _pendingConfirm = null;
+        _busy = false;
+        _wants = false;
+    }
+
     public static void Tick()
     {
         if (!RunConfig.Enabled) return;
@@ -113,6 +128,22 @@ public static class NewRunPanel
         var screen = pre.runSettingsScreen;
         bool active = screen != null && screen.activeInHierarchy;
         if (!active) _wants = false;         // 界面关掉（返回/开局）→ 下次要重新点按钮
+
+        // 选角页打开时 / 选的是原版角色 → 不显示我们的界面
+        // （原版角色走原版 runSettingsScreen：难度预设 + 原版存档）
+        if (CharacterSelect.Current != CharacterSelect.Sf07)
+        {
+            if (_root != null && _root.activeSelf) _root.SetActive(false);
+            // 弹窗（命名/确认）也要一起清：它是全屏 dim，留着就是"整屏变暗 + 点不动"
+            if (_dialog != null) UnityEngine.Object.Destroy(_dialog);
+            _dialog = null;
+            _dialogInput = null;
+            _pendingMode = null;
+            _pendingRename = null;
+            _pendingConfirm = null;
+            _busy = false;
+            return;
+        }
 
         if (!(_wants && active))
         {
@@ -149,6 +180,8 @@ public static class NewRunPanel
             RebuildSlots();
         }
 
+        FitStage();      // 窗口/分辨率变化后保持等比缩放
+
         // 选好了但世界没起来（StartRun 抛异常/被拦）→ 别把玩家卡在灰按钮里
         if (_busy)
         {
@@ -167,6 +200,27 @@ public static class NewRunPanel
         var parent = _root.transform.parent;
         if (parent != null && _root.transform.GetSiblingIndex() != parent.childCount - 1)
             _root.transform.SetAsLastSibling();
+    }
+
+    // ==========================================================================
+    //  舞台等比缩放：1920×1080 设计稿 → 父 Canvas 的实际逻辑尺寸
+    // ==========================================================================
+    private static void FitStage()
+    {
+        if (_stage == null || _root == null) return;
+        try
+        {
+            var p = _root.transform.parent as RectTransform;
+            if (p == null) return;
+            float w = p.rect.width, h = p.rect.height;
+            if (w < 1f || h < 1f) return;
+
+            float k = Mathf.Min(w / 1920f, h / 1080f);
+            if (float.IsNaN(k) || k <= 0.01f) k = 1f;
+            var s = new Vector3(k, k, 1f);
+            if ((_stage.localScale - s).sqrMagnitude > 0.000001f) _stage.localScale = s;
+        }
+        catch { }
     }
 
     // ==========================================================================
@@ -197,21 +251,36 @@ public static class NewRunPanel
             var bg = NewImage(rt, "Bg", BgCol);
             bg.raycastTarget = true;
 
+            // ---- 舞台：所有内容按 1920×1080 设计，再整体等比缩放 ----
+            //   ★ 笔记本 / 小屏 / 非 16:9 时，父 Canvas 的逻辑尺寸可能只有 1800 甚至更小，
+            //     直接铺 1800 宽的绝对坐标会被裁掉两边。这里固定设计尺寸 + min(W/1920, H/1080)。
+            var stageGo = new GameObject("Stage", typeof(RectTransform));
+            var stageRt = stageGo.GetComponent<RectTransform>();
+            stageRt.SetParent(rt, false);
+            stageRt.anchorMin = stageRt.anchorMax = new Vector2(0.5f, 0.5f);
+            stageRt.pivot = new Vector2(0.5f, 0.5f);
+            stageRt.sizeDelta = new Vector2(1920f, 1080f);
+            stageRt.anchoredPosition = Vector2.zero;
+            stageRt.localScale = Vector3.one;
+            _stage = stageRt;
+
+            var ui = stageRt;
+
             // ---- 顶部 ----
-            var title = MakeText(rt, "Title", UiText.Get("newrun", "title", "STEM-FISH DLC"), 36f, TextCol, TextAlignmentOptions.Left);
+            var title = MakeText(ui, "Title", UiText.Get("newrun", "title", "STEM-FISH DLC"), 36f, TextCol, TextAlignmentOptions.Left);
             PlaceL(title.rectTransform, LeftX, 492f, new Vector2(600f, 46f));
 
-            var sub = MakeText(rt, "Sub", UiText.Get("newrun", "sub", "选择一局新游戏，或者继续之前的存档"), 15f, DimCol, TextAlignmentOptions.Left);
+            var sub = MakeText(ui, "Sub", UiText.Get("newrun", "sub", "选择一局新游戏，或者继续之前的存档"), 15f, DimCol, TextAlignmentOptions.Left);
             PlaceL(sub.rectTransform, LeftX, 462f, new Vector2(900f, 24f));
 
-            var line0 = NewImage(rt, "Line0", new Color(SkyCol.r, SkyCol.g, SkyCol.b, 0.22f));
+            var line0 = NewImage(ui, "Line0", new Color(SkyCol.r, SkyCol.g, SkyCol.b, 0.22f));
             Place(line0.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 440f), new Vector2(1800f, 1f));
 
             // ---- 左栏标题 ----
-            var lh = MakeText(rt, "LeftHead", UiText.Get("newrun", "leftHead", "新的一局"), 22f, TextCol, TextAlignmentOptions.Left);
+            var lh = MakeText(ui, "LeftHead", UiText.Get("newrun", "leftHead", "新的一局"), 22f, TextCol, TextAlignmentOptions.Left);
             PlaceL(lh.rectTransform, LeftX, 404f, new Vector2(420f, 30f));
 
-            var ld = MakeText(rt, "LeftDesc", UiText.Get("newrun", "leftDesc", "选一个模式，给存档起个名字，立刻出发。急速下坠不建存档。"),
+            var ld = MakeText(ui, "LeftDesc", UiText.Get("newrun", "leftDesc", "选一个模式，给存档起个名字，立刻出发。急速下坠不建存档。"),
                               12f, FaintCol, TextAlignmentOptions.Left);
             PlaceL(ld.rectTransform, LeftX, 378f, new Vector2(CardW, 20f));
 
@@ -219,11 +288,11 @@ public static class NewRunPanel
             for (int i = 0; i < RunConfig.All.Length; i++)
             {
                 float y = CardsTop - CardH * 0.5f - i * (CardH + CardGap);
-                BuildCard(rt, RunConfig.All[i], y);
+                BuildCard(ui, RunConfig.All[i], y);
             }
 
             float footY = CardsTop - RunConfig.All.Length * (CardH + CardGap) - 8f;
-            var foot = MakeText(rt, "Foot",
+            var foot = MakeText(ui, "Foot",
                 string.Format(UiText.T("newrun.statline",
                     Lang.T("所有模式的开局装备相同，初始技能固定为 力量 {0} / 耐力 {1} / 智力 {2}。      负重上限 ×{3}",
                            "All modes share the same starter kit. Starting stats: STR {0} / RES {1} / INT {2}.      Carry cap x{3}")),
@@ -232,7 +301,7 @@ public static class NewRunPanel
             PlaceL(foot.rectTransform, LeftX, footY, new Vector2(CardW, 20f));
 
             // ---- 左下：存档说明（顺便把左栏下半截填满）----
-            var box = NewImage(rt, "SaveHint", new Color(0.043f, 0.055f, 0.068f, 1f));
+            var box = NewImage(ui, "SaveHint", new Color(0.043f, 0.055f, 0.068f, 1f));
             PlaceL(box.rectTransform, LeftX, -378f, new Vector2(CardW, 156f));
 
             var bh = MakeText(box.transform, "H", UiText.Get("newrun", "saveHintTitle", "存档"), 15f, SkyCol, TextAlignmentOptions.TopLeft);
@@ -252,12 +321,14 @@ public static class NewRunPanel
                 10f, FaintCol, TextAlignmentOptions.TopLeft);
             Place(bp.rectTransform, new Vector2(0f, 0f), new Vector2(16f, 8f), new Vector2(CardW - 32f, 14f));
 
-            BuildBackButton(rt, pre, -494f);
+            BuildBackButton(ui, pre, -494f);
 
             // ---- 右栏：存档 ----
-            BuildSlotsColumn(rt);
+            BuildSlotsColumn(ui);
 
-            Plugin.Log.LogInfo($"[STEMFishDLC] 进入游戏界面已构建（{RunConfig.All.Length} 个模式 · 画布 {rt.rect.width:0}×{rt.rect.height:0}）");
+            FitStage();
+            Plugin.Log.LogInfo($"[STEMFishDLC] 进入游戏界面已构建（{RunConfig.All.Length} 个模式 · 舞台 1920×1080 · " +
+                               $"父画布 {rt.rect.width:0}×{rt.rect.height:0} · 缩放 {_stage.localScale.x:0.000}）");
             _failBuild = 0;
         }
         catch (Exception e)
@@ -359,6 +430,7 @@ public static class NewRunPanel
 
         BuildScroll(list.rectTransform, out _slotContent);
         RebuildSlots();
+
     }
 
     private static void BuildScroll(RectTransform parent, out RectTransform content)
@@ -590,7 +662,7 @@ public static class NewRunPanel
         _pendingMode = mode;
         _pendingRename = renameId;
 
-        var dim = NewImage(_root.transform, "DlgDim", new Color(0f, 0f, 0f, 0.78f));
+        var dim = NewImage(_stage != null ? (Transform)_stage : _root.transform, "DlgDim", new Color(0f, 0f, 0f, 0.78f));
         dim.raycastTarget = true;
         var drt = dim.rectTransform;
         drt.anchorMin = Vector2.zero;
@@ -638,7 +710,7 @@ public static class NewRunPanel
         _pendingRename = null;
         _pendingConfirm = onYes;
 
-        var dim = NewImage(_root.transform, "DlgDim", new Color(0f, 0f, 0f, 0.78f));
+        var dim = NewImage(_stage != null ? (Transform)_stage : _root.transform, "DlgDim", new Color(0f, 0f, 0f, 0.78f));
         dim.raycastTarget = true;
         var drt = dim.rectTransform;
         drt.anchorMin = Vector2.zero;

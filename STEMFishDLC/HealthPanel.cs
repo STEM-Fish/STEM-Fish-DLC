@@ -73,6 +73,8 @@ public static class HealthPanel
 
     public static void Tick()
     {
+        if (!CharacterSelect.IsPlayerSf07()) return;      // 原版角色保持绿色 + 随机编号
+
         if (!Enabled && !Recolor) return;
 
         var v = WoundView.view;

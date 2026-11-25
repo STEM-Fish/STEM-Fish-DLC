@@ -167,6 +167,9 @@ public static class BloodRed
             var body = pc != null ? pc.body : null;
             if (body == null) return;
 
+            // v0.23：红血是 SF-07 的改造特征；原版三个角色保持黄色 SAW 血
+            if (!CharacterSelect.IsSf07(body)) return;
+
             int mats = 0, parts = 0, decals = 0;
 
             // ① + ② 肢体材质 / 肢体上的流血粒子

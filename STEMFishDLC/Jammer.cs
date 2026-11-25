@@ -489,6 +489,26 @@ public static class Jammer
     // ==========================================================================
     //  UI（自绘，半透明黑 + 扁平，和 MOD 面板同一套风格）
     // ==========================================================================
+    /// <summary>
+    /// 强制收掉屏蔽器覆盖层（全屏 0.72 黑 + GraphicRaycaster）。
+    /// 如果玩家在序列播到一半时退出到主菜单，_root 是 DontDestroyOnLoad 的，
+    /// 留在那里就会「整屏变暗 + 点什么都没反应」。
+    /// </summary>
+    public static void ForceHide()
+    {
+        try
+        {
+            if (_root == null) return;
+            UnityEngine.Object.Destroy(_root);
+            _root = null;
+            _phase = Phase.Idle;
+            _script = null;
+            ResumeGame();
+            Plugin.Log.LogInfo("[STEMFishDLC] 屏蔽器覆盖层已强制收起（回主菜单）");
+        }
+        catch { }
+    }
+
     private static void BuildUI()
     {
         try

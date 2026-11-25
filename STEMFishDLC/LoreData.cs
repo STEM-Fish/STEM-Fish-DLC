@@ -206,6 +206,15 @@ public static class LoreData
     // ==========================================================================
     //  加载 / 存档
     // ==========================================================================
+    // 语言切换后重读（档案正文在下次打开终端时生效）
+    public static void Reload()
+    {
+        _loaded = false;
+        _entries.Clear();
+        _read.Clear();
+        EnsureLoaded();
+    }
+
     private static void EnsureLoaded()
     {
         if (_loaded) return;

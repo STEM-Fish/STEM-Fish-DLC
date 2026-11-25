@@ -10,7 +10,7 @@
 
 说明：是非官方MOD，此角色设定并不是 Casualties: Unknown 或 Gunsaw 原设定之中的。设定版权归开发者所有。但这不影响你可以免费获得这个 MOD 进行游玩，并可以任意进行开源的二次开发。详见 License。
 
-当前版本：**0.22.0**（插件 GUID：`com.stemfish.dlc`）
+当前版本：**0.23.1**（插件 GUID：`com.stemfish.dlc`）
 
 ---
 
@@ -21,18 +21,19 @@
 | 机制 | 说明 |
 |---|---|
 | **五种模式** | 普通 / 简单 / 天堂 / 荒凉 / **急速下坠**，在原版的基础上调整过各项参数，并包含娱乐模式。 |
+| **独立角色** | SF-07 是选角界面里的第 4 个角色，与 EXPie / Milky / Dune 并列。选原版角色就完全是原版（皮肤、身高、属性、负重、血色都不动）；选 SF-07 才是这套外观与 10/9/18。**选角入口在主菜单右上角「选择角色」**，点开就是原版 CharSelect 页（第 4 格是 SF-07，永远可选）；底部按钮文案改成「选择角色」，点它只确认、不直接开局。角色说明写在 `chars.*.json`。 |
 | **急速下坠** | 与原版 `runSettings["endless"]`一致。模式机制包含无限弹匣、世界明亮、核动力激光钻、击杀奖励心情、**幸运方块刷新**、摔落伤害减免、卡壳取消等。这意味着你可以在这个模式里进行非正式游玩和放松。是真EXPie就下100层！ |
 | **存档** | MOD自带存档系统。每个正常模式开局建一个存档并要求命名；层底存档点自动写入，通过`F4`或UI按钮 手动保存；进入游戏右侧列表可载入 / 改名 / 删除。急速下坠默认不建存档。**存档会连同本层地图方块与角色坐标一起保存，读档后地形和站位都跟存档时一致**（`[Save] SaveMap` 可关）。读档是「原地续玩」：原版会把层号 +1（存档点=本层到底 → 读档进下一层），我们把层号掰回存档那一层，所以读档后还在同一层，走到底再按「继续前进」才下去。 |
 | **开局装备** | 黑色双肩包*（内含狗粮 + 纯净水）、MDRZ9*、弹挂甲、战术头盔、耳塞、手电、冲锋衣、复合裤子、硬橡胶鞋子 （包含大量非原版物品） |
 | 取消退出自爆 | 自带取消退出自爆机制。这会让你无需使用 Alt+F4 离开你的游戏以避免目睹这场悲剧。 |
 | **体型** | 按设定身高 **1.70m** 放大外观（原版 EXPie 基准 145.5cm → 贴图 ×1.168）。只改**贴图显示大小**，碰撞箱 / 刚体 / 关节完全不动 —— 所以不会悬浮、不卡窄洞。`[Body] HeightCm` 可调。 |
-| **负重** | 开局力量/韧性从 18/16 **下调到 12/12**（原版 EXPie 是 9/8），但同样的力量等级下**背上限比 EXPie 高 40%**（`[Skills] CarryMult`）。数值下调是为了不在投掷/近战上过分超模，负重则由倍率补回来，开局不超重。 |
+| **负重** | 开局力量/韧性 **10/9**（原版 EXPie 是 9/8），但同样的力量等级下**背上限比 EXPie 高 40%**（`[Skills] CarryMult`）。数值下调是为了不在投掷/近战上过分超模，负重则由倍率补回来，开局不超重。 |
 
 ### 战斗有关机制
 
 | 机制 | 说明 |
 |---|---|
-| **尖刺爬行者** | 新敌人（类似红色的 `thornbackyoung`）：远程保持距离射尖刺，造成流血和弹片伤。正常模式只在深层岩石(2) / 沙漠层(3)刷，急速下坠不限层。注意这会大大增加第二层的 PVE 强度与弹药紧张程度。 |
+| **尖刺爬行者** | 新敌人（类似红色的 `thornbackyoung`）：远程保持距离射尖刺，造成流血和弹片伤。正常模式只在深层岩石(2) / 沙漠层(3)刷，急速下坠不限层；**只有选 SF-07 的局才会出现**（判定写在这个生物自己的投放函数里，原版角色的刷怪管线一行都没被拦）。注意这会大大增加第二层的 PVE 强度与弹药紧张程度。 |
 | **反馈优化** | 生物受伤喷黄血 + 小型生物被击飞 + 枪线与命中点的光照和特效扩充；急速下坠击杀回心情。 |
 | **红血** | 主角的血走守卫（人类）那一套：肢体血渍贴图、流血粒子、落地/墙面血渍全红。其它生物保持实验体的黄血。`[General] RedBlood` 可关，`BloodDark/BloodLight` 可改色。 |
 | **战斗键位** | 出于角色设定，你将拥有最好用的R键，在智能检测手持物品状态的基础上，同时具备自动更换弹匣、拉栓等功能。但请注意原版健康面板的键位。这将保证战斗的连贯性并大幅提升战斗体验。 |
@@ -49,9 +50,14 @@
 ### 语言 / Language
 
 - 首次启动按**游戏语言**自动选择：英文游戏 → `en-US`，中文游戏 → `zh-CN`。
-- 也可以在 `BepInEx/config/com.stemfish.dlc.cfg` 的 `[General] Language` 里强制 `zh-CN` 或 `en-US`。
-- 四个文本表都有中英两份：`items.*.json` / `voice.*.json` / `lore.*.json` / `ui.*.json`；界面里原本硬编码的文字也已经搬进 `ui.*.json` 的 `strings` 段。
-- 英文版里，**全部档案 + 剧情关键台词 + 界面**是重写的；通用状态台词如果在英文表里没有，会保留**游戏自带的英文台词**，不会退回中文。
+- **游戏内也能切**：主菜单右上角「MOD 管理」→ 模块页 → 通用 → **文本语言**，
+  点一下按 `跟随游戏 → 中文 → English` 循环。词库 / 界面文案 / 物品名 / 档案立刻重载，
+  少数已经生成到屏幕上的 TMP 文本重启后完全一致。
+- 也可以直接改 `BepInEx/config/com.stemfish.dlc.cfg` 的 `[General] Language`。
+- 五个文本表都有中英两份：`items.*.json` / `voice.*.json` / `lore.*.json` / `ui.*.json` / `chars.*.json`；
+  界面里原本硬编码的文字也已经搬进 `ui.*.json` 的 `strings` 段。
+- 英文版里，**档案 + 全部主角台词 + 界面**都是重写的；只有商人 / NPC 的回应保留
+  游戏原版英文（说话的不是 SF-07）。
 
 ### 视觉与文本
 
@@ -66,7 +72,8 @@
 
 | 文件 | 内容 |
 |---|---|
-| `voice.zh-CN.json` / `voice.en-US.json` | 台词库：`expand` / `chatter` / `lines`；英文版只收录剧情关键台词，其余保留游戏英文原声 |
+| `voice.zh-CN.json` / `voice.en-US.json` | 台词库：`expand` / `chatter` / `lines`；英文版主角台词全量重写（89 类 / 303 句），只有商人 / NPC 回应保留游戏英文 |
+| `chars.zh-CN.json` / `chars.en-US.json` | SF-07 的角色说明：名字、生物分类、临行之言、成功几率、备注、九条特性（选角界面右侧显示） |
 | `items.zh-CN.json` / `items.en-US.json` | 物品名与描述（含血袋不兼容提示） |
 | `lore.zh-CN.json` / `lore.en-US.json` | 战术终端档案（11 篇；`layer` 字段把每篇钉在 1~11 层；sf10 / sf11 的批注按芯片状态分三版） |
 | `ui.zh-CN.json` / `ui.en-US.json` | 界面文案：模式卡片、开局面板、MOD 管理页、战术终端、HUD 与存档提示 |
@@ -102,7 +109,7 @@ Casualties Unknown/
 └── winhttp.dll / doorstop_config.ini （BepInEx 自带）
 ```
 
-3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.22.0 =====` 即成功。
+3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.23.1 =====` 即成功。
 
 > 联机：可与 **Casualties: Together v5.4.0**（KrokMP 的续作）共存。
 > 进游戏前建议先在 `Settings > General` 里确认联机开关状态。
@@ -159,9 +166,11 @@ STEMFishDLC/
 ├── AmmoBox.cs / AmmoCompat.cs
 ├── SpikeCrawler.cs / LuckyBlock.cs / SpawnDirector.cs
 ├── FishSkin.cs / LoadingArt.cs / MenuArt.cs / CursorFeature.cs
+├── CharacterSelect.cs       ← SF-07 作为第 4 个角色（Tag / 立绘 / BaseSkills / SpawnCharacter）
+├── Toxin.cs                 ← 可可碱不耐受（包 Liquids.Registry 的 onDrink）
 ├── HealthPanel.cs / HealthDoll.cs / WeaponHud.cs / DlcPanel.cs
 ├── FishVoice.cs / UiText.cs / ItemText.cs / FishLocalization.cs
-├── voice.zh-CN.json / items.zh-CN.json / lore.zh-CN.json / ui.zh-CN.json
+├── voice.zh-CN.json / items.zh-CN.json / lore.zh-CN.json / ui.zh-CN.json / chars.zh-CN.json
 ├── skin/EXP_STEMFISH_DLC/   ← 皮肤包（Body / Head / Blood / Loading）
 ├── textures/                ← 物品图标、准星、人体图等
 └── lore_img/                ← 档案配图
@@ -212,8 +221,18 @@ STEMFishDLC/
 
 ### 其它
 
-- **角色选择**：游戏本体已经预置了 SAW-03 `Milky` / SAW-12 `Dune` 的立绘与文案，
-  但原版暂时没有选择角色的入口。这个问题在 MP 联机模组中得到了修补，但目前我们并没有做联动的适配，所以请不要在 MP 联机模组启用时启用此MOD游玩。
+- **角色选择**：入口在**主菜单右上角「选择角色」**（在「MOD 管理」下面）。打开的是
+  **原版 `runSettingsScreen` 里的 CharSelect 页**，我们把 SF-07 作为第 4 格插进去
+  （克隆第 3 格的台座与按钮，`rect` 按自己的宽高比，永远可选，不吃 `wonchar` 解锁）。
+  页面底部的「开始冒险」文案改成「选择角色」，点它只确认并关闭页面，不会直接开局；
+  主界面立绘 / 轮廓 / 文字位置跟着切换。
+  `PreRunScript.characterSelected` 仍是原版字段，存档里的 `SaveInfo.character` 也照原样记 0~3。
+  联机模组（Together）会放开 `CharacterSpawn.ClampChar` 的 0..2 限制，但**对端也要装
+  同一个版本**，否则对方只会看到 Dune。
+- **选原版角色时**：皮肤 / 身高 / 负重 / 红血 / 初始属性全部不动；不发开局装备、
+  不撒弹药箱、不刷尖刺爬行者、不调刷怪倍率；台词走游戏原版（不会听到 SF-07 的独白）；
+  右下角武器 HUD、左下角 HUD 按钮、F8 战术终端、R 键智能换弹全部关闭；
+  健康面板保持原版绿色 + 随机编号。教程模式同样完全原版。
 - **建筑实体不随存档保存**：地图方块和角色坐标已经存了，但箱子 / 商人 / 机器这类
   `BuildingEntity` 仍由世界生成时随机摆放，读档后会重新分布（原版格式里没有这部分）
 - 与联机 MOD 的兼容性只做了基础验证，未覆盖所有场景

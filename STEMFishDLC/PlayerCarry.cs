@@ -116,6 +116,9 @@ public static class PlayerCarry
             try { player = PlayerCamera.main != null ? PlayerCamera.main.body : null; } catch { }
             if (player == null || !ReferenceEquals(player, __instance)) return;
 
+            // v0.23：负重加成是 SF-07 的体质特性，原版角色保持原版上限
+            if (!CharacterSelect.IsSf07(__instance)) return;
+
             float baseMax = __instance.maxEncumberance;
 
             // 这次没重算（那段 `if (halfSecondCheckTime > 0.5)` 没进）→ 什么都不做，

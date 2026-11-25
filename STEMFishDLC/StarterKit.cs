@@ -114,10 +114,27 @@ public static class StarterKit
         try
         {
             string name = __originalMethod != null ? __originalMethod.Name : "";
-            bool isNewRun = name == "StartRun" || name == "StartTutorial";
+
+            // 教程保持原版：不发装备、不改技能（v0.23.1）。
+            // `StartTutorial` 是独立入口，原版教程本身就是教学关，塞一套装备反而破坏节奏。
+            if (name == "StartTutorial")
+            {
+                _wantKit = false;
+                _granted = true;
+                PlayerSkills.OnRunEntry(false);
+                Plugin.Log.LogInfo("[STEMFishDLC] 局入口 StartTutorial → 教程模式，不发开局物资、不改技能");
+                return;
+            }
+
+            bool isNewRun = name == "StartRun";
             _wantKit = isNewRun;
             _granted = false;
             PlayerSkills.OnRunEntry(isNewRun);      // 新开局才拉技能
+
+            // 原版角色：刷怪倍率 / 禁用名单 / 动态投放全部回到原版数值。
+            // 我们模式的 SetMode 只服务 SF-07，但上一局留下的静态状态会跨局，
+            // 所以在局入口再压一次。
+            if (isNewRun && CharacterSelect.Current != CharacterSelect.Sf07) SpawnDirector.ResetToVanilla();
             Plugin.Log.LogInfo($"[STEMFishDLC] 局入口 {name} → 开局物资 {(_wantKit ? "待发" : "不发（读档）")}");
         }
         catch { }
@@ -133,6 +150,16 @@ public static class StarterKit
 
         var body = PlayerCamera.main != null ? PlayerCamera.main.body : null;
         if (body == null) return;                   // 等玩家出生
+
+        // ★ 这套装备是 SF-07 的（设定上"为测试战斗数据发的"）。
+        //   选原版 EXPie / Milky / Dune 时不该发。
+        if (!CharacterSelect.IsSf07(body))
+        {
+            _granted = true;
+            _wantKit = false;
+            Plugin.Log.LogInfo("[STEMFishDLC] 开局物资：当前不是 SF-07，跳过");
+            return;
+        }
 
         _granted = true;
         _wantKit = false;

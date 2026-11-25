@@ -2,6 +2,65 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.23.1 — 2026-11-25
+
+- **尖刺爬行者只在 SF-07 的局里投放**：判断写在它自己的投放函数 `EnsureSpawn`
+  和改造入口 `Register` 上，**不去拦原版刷怪管线**。选原版角色时这段逻辑压根不启用，
+  原版刷什么、刷多少完全不受影响
+- **原版角色不再说 SF-07 的独白**：`FishVoice.SayLine` 统一加门槛（捡档案 / 开弹药箱 /
+  开局配给 / 杀同类惩罚这些模块仍会调用它），原版角色一句话都不说
+- **原版角色刷怪倍率归零**：新增 `SpawnDirector.ResetToVanilla()`，在局入口调用，
+  把生成期倍率、禁用名单、动态投放全部恢复原版（上一局留下的状态不再跨局）
+- **选角页四格重排修正单位混用**：位置用世界坐标、缩放比较用本地宽度。
+  以前父画布缩放 ≠ 1 时格宽会被放大 1.3 倍以上（日志里「父宽 1728 · 剩余 1959」）
+- **选角页打开前清理残留全屏图层**：模式面板 / MOD 管理 / 战术终端 / 屏蔽器覆盖层
+  全部强制收起（它们都是 DontDestroyOnLoad 的全屏半透明 + 吃射线），
+  同时打印全屏图层清单便于定位
+- **选角页“变灰 + 点不动”的两个真正原因（已修）**
+  - 点角色卡：第 4 格的 `inner`（实心白剪影）被挪到了 `Slide` 层，选中→白色、
+    未选中→黑色，等于在整页上盖了一层黑白剪影。现在直接不画（原版那层是空心描边，
+    我们的 char4outline 是实心剪影，画上去只会盖住立绘）
+  - 点「返回」：原版会把 `CharSelect` 收起，而它的父物体 `RunSettings` 自带
+    `alpha=0.91`、`raycastTarget=1` 的近全屏底板 —— 页一收就只剩这层灰底，
+    点什么都没反应。现在检测到页面被收起就立刻关掉整个设置页，回主菜单
+- **选角页守护**：每帧把 `cover`（整屏淡入淡出层）的 alpha 与 `raycastTarget` 归零、
+  整链路 CanvasGroup 拉回可交互、`timeScale` 归 1、解锁光标；ESC / 右键可随时退出
+
+## 0.23.0 — 2026-11-23
+
+- **SF-07 成为独立角色（第 4 个）**
+  - 进入游戏界面左栏新增「角色」一行：原版 3 个立绘 + SF-07，点一下即选中，
+    结果写回原版 `PreRunScript.characterSelected`（存档 / 生成 / 读档全走原版通道）
+  - `[Character] Enabled` 可关；关闭后只剩原版三个角色
+  - 角色说明在 `chars.zh-CN.json` / `chars.en-US.json`：名字、生物分类（狼人等基因混合体）、
+    临行之言、成功几率、备注，以及犬科烙印+ / 改造体质 / 水栖适应 / 生物荧光 / 芯片 /
+    特殊训练 / 额外补给 / 终端平板 / 迟到者九条特性；`Skills.BaseSkills(3)` 返回 12/12/18
+  - 生成走 `Special/Characters/Experiment` 骨架 + `CharacterSelect.Tag` 标记；
+    **`Body.charType` 保持 0**，进食/穿戴/唤醒等原版分支仍按 EXPie 处理
+  - 选角立绘 `Loading/char4.png` + `char4outline.png`（白色剪影），由 2K 壁纸
+    去背、像素化（168px 高、48 色）生成，工具 `tools/art/make_char4.py`
+  - 联机：`Together.CharacterSpawn.ClampChar` 的 0..2 限制会放开（检测到
+    `CasualtiesMP.dll` 才打这个补丁）
+- **与 EXPie 分离**：`FishSkin` / `BodyProportion` / `PlayerSkills` / `PlayerCarry` /
+  `BloodRed` 现在只对带 `Tag` 的身体生效。选原版 EXPie / Milky / Dune 时：
+  外观、身高、开局属性、负重倍率、血色全部保持原版
+- **英文台词补全**：`voice.en-US.json` 的 `expand` 从 34 类补到 89 类
+  （新增 55 类 / 189 句）。主角所有状态、行为、遭遇台词都用 SF-07 自己的英文重写，
+  不再回退到游戏原版的 EXPie 台词；只有商人 / NPC 的回应保持原版英文
+- **语言切换入口**：MOD 管理 → 模块页新增「通用 / 文本语言」一行，
+  点一下按 `跟随游戏 → 中文 → English` 循环，写回 `[General] Language`。
+  切换后台词库、界面文案、物品名、档案立刻按新语言重载；少数已生成的 TMP 文本
+  重启后完全一致
+- **主菜单「进入游戏」文字上移**：不再按固定 43px 偏移猜中心点，改成按文字框
+  实际高度把字底边抬到立绘包围盒之上（`TextGapTop` 43 → 56，再加半个字高，
+  上限 30px）。头顶那对竖鳍不会再压住字
+- **血袋**：名称去掉「（与 SF-07 不匹配）」后缀，警告句改成红色富文本
+  （`<color=#E05A5A>`），中英文同步
+- **可可碱不耐受**：`Toxin` 给 `Liquids.Registry` 里 coffee / chocolatemilk /
+  energydrink 的 `onDrink` 包一层，SF-07 额外吃 `CocoaMultiplier-1` 倍疾病
+  （默认 ×3）；固体巧克力棒走 `Body.Eat`，每根 +90×(倍率-1) 疾病。
+  `[Mechanics] CocoaToxin` / `CocoaMultiplier` 可调。原版三个角色不受影响
+
 ## 0.22.0 — 2026-11-23
 
 - **英文版 / English localization**

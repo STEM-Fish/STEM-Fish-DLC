@@ -57,6 +57,23 @@ public static class UiText
         ApplyModes();
     }
 
+    // 语言切换后重读（面板下一次 Refresh 就会用新语言）
+    public static void Reload()
+    {
+        _data.Clear();
+        _loaded = false;
+        try
+        {
+            FilePath = Lang.File("ui");
+            if (File.Exists(FilePath)) Load(FilePath);
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] 界面文案重载失败: {e.Message}");
+        }
+        ApplyModes();
+    }
+
     private static void Load(string path)
     {
         try

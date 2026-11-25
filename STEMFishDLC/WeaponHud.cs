@@ -76,6 +76,13 @@ public static class WeaponHud
                 return;
             }
 
+            // 右下角武器 HUD 是 SF-07 的延伸界面，原版角色不显示
+            if (!CharacterSelect.IsPlayerSf07())
+            {
+                if (_box != null && _box.activeSelf) _box.SetActive(false);
+                return;
+            }
+
             if (!_built) Build();
             if (_box == null) return;
 

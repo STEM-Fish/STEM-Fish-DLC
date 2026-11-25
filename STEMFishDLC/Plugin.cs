@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.22.0")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.23.1")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.22.0 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.23.1 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -76,6 +76,7 @@ public class Plugin : BaseUnityPlugin
         AmmoBox.Init(this);         // 弹药箱（战利品池注入 + 延迟填充）
         StarterKit.Init(this);      // 开局物资（只在新开局发一次）
         PlayerSkills.Init(this);    // 初始技能（新开局拉高 STR/RES/INT）
+        CharacterSelect.Init(this); // SF-07 作为第 4 个角色（选角入口 + 与 EXPie 分离）
         PlayerCarry.Init(this);     // 负重上限倍率（同等力量比 EXPie 更能背）
         BodyProportion.Init(this);  // 体型：按 1.70m 放大外观（必须在 FishSkin 之前）
         RunConfig.Init(this);       // 开局难度（含动态刷怪 SpawnDirector）
@@ -92,6 +93,7 @@ public class Plugin : BaseUnityPlugin
         LaserDrill.Init(this);      // 急速下坠：激光钻无限电量
         Hearing.Init(this);         // 战术耳塞（抗听力损伤 + 闷声）
         Mechanics.Init(this);       // 游泳 / 杀同类惩罚 / 血袋副作用
+        Toxin.Init(this);           // SF-07：可可碱 / 咖啡因不耐受（更严重的中毒）
         WeaponHud.Init(this);       // 右下角武器状态 HUD
         HealthPanel.Init(this);     // 健康面板：STEM-Fish 档案 + 天蓝配色
         HealthDoll.Init(this);      // 右上角人体图（按部位显示受伤）
@@ -147,6 +149,7 @@ public class Plugin : BaseUnityPlugin
         if (!ModState.Enabled) return;
 
         Safe(FishVoice.Update);
+        Safe(Toxin.Tick);               // 可可碱不耐受：等 Liquids.Registry 建好后包 onDrink
         Safe(DlcPanel.Update);
         Safe(HudButton.Update);         // 进世界后自动挂 HUD 按钮（失败会一直重试）
         Safe(WeaponHud.Update);         // 右下角武器状态
@@ -157,6 +160,7 @@ public class Plugin : BaseUnityPlugin
         Safe(HypeMode.Tick);            // 急速下坠：击杀去重表维护
         Safe(AmmoBox.Tick);             // 弹药箱：战利品池懒注入
         Safe(StarterKit.Tick);          // 开局物资：等玩家出生后发放
+        Safe(CharacterSelect.Tick);     // 选角校正 / 读档重建后补 SF-07 标记（必须在技能之前）
         Safe(PlayerSkills.Tick);        // 初始技能：等玩家出生后应用
         Safe(BodyProportion.Tick);      // 体型：档案身高 / 血迹缩放
         Safe(FishSkin.Tick);            // 内置皮肤：每帧校正角色贴图

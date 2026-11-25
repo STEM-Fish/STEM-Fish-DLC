@@ -186,6 +186,7 @@ public static class FishVoice
         try
         {
             if (chr != 0) return;                              // 只改主角（0 = experiment）
+            if (CharacterSelect.Current != CharacterSelect.Sf07) return;   // 原版角色用原版台词库
             if (string.IsNullOrEmpty(str)) return;
 
             bool hasMine = _expand.TryGetValue(str, out var mine) && mine != null && mine.Count > 0;
@@ -237,6 +238,7 @@ public static class FishVoice
     // ==========================================================================
     public static void Update()
     {
+        if (!CharacterSelect.IsPlayerSf07()) return;      // 原版角色不播 SF-07 的独白
         try
         {
             TryExportTemplate();       // 语言资源可能晚于 Init 就绪，这里再试一次
@@ -350,6 +352,13 @@ public static class FishVoice
         catch { }
     }
 
+    // 供语言切换用：立刻按当前语言重读台词库（不等 2 秒轮询）
+    public static void ReloadVoice()
+    {
+        LoadVoice();
+        Plugin.Log.LogInfo($"[STEMFishDLC] 台词库已按 {Lang.Code} 重新载入");
+    }
+
     // 从 voice.zh-CN.json 的 "lines" 里随机取一句（key 不存在就用 fallback）
     // ---------------------------------------------------------------------------
     //  给"代码里想随机说一句"的场合用，目前是换弹（GunHandling）。
@@ -388,6 +397,14 @@ public static class FishVoice
     public static void SayLine(string text)
     {
         if (!ModState.Enabled) return;
+
+        // ★ 所有"即时台词"都是 SF-07 自己的独白。捡到档案 / 开弹药箱 / 开局配给 /
+        //   杀同类惩罚 …… 这些模块在选原版角色时**照样会调用** SayLine，
+        //   所以门槛必须设在这里，而不是指望每个调用点各自判断。
+        //   原版角色：一句话都不说，完全用原版台词库。
+        if (CharacterSelect.Current != CharacterSelect.Sf07) return;
+        if (CharacterSelect.IsTutorial()) return;
+
         try
         {
             if (string.IsNullOrEmpty(text)) return;

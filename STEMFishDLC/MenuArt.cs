@@ -48,7 +48,7 @@ public static class MenuArt
     //   推导依据（原版 back15 实测 bbox 中心 (-499,-171)、顶边 78）→ 文字 (-379,121)、
     //   点击框 (-367,-171)，与场景里的 (-380,121) / (-367.21,-171.82) 吻合。
     private const float TextGapRight = 120f;
-    private const float TextGapTop = 43f;
+    private const float TextGapTop = 56f;
     private const float ClickGapRight = 132f;
 
     private static Image _img;
@@ -93,6 +93,29 @@ public static class MenuArt
         catch { }
     }
 
+    // 选角换了立绘（sprite 名字还叫 back15）→ 清掉轮廓/文字缓存，让 Tick 下一帧按新图重建。
+    // ★ 不清 _img：换的是同一个 Image，重新扫描可能命中别处同名的 Experiment。
+    public static void Invalidate()
+    {
+        _outline = null;
+        _outlineKey = null;
+        _boundId = 0;
+        _blink = null;
+        _outlineImg = null;
+        _moved.Clear();
+        _logged.Clear();
+    }
+
+    /// <summary>主菜单正在显示的那只立绘（没有就现找）</summary>
+    public static Image CurrentImage
+    {
+        get
+        {
+            if (_img == null) FindExperiment();
+            return _img;
+        }
+    }
+
     public static void Tick()
     {
         if (!Enabled) return;
@@ -105,11 +128,22 @@ public static class MenuArt
             var sp = _img.sprite;
             if (sp == null) return;
 
+            // ★ 动态轮廓/重摆文字只服务 SF-07 的替换美术。
+            //   选原版角色时 outline 用原版 outlineSprites（Start 里按 chr 配好），
+            //   文字用原版 textOffset——两者都是原版手调的，零偏移。
+            //   我们的生成版只在「当前角色是 SF-07」时接管。
+            if (CharacterSelect.Current != CharacterSelect.Sf07) return;
+
             string key = NormalizeKey(sp.name);
 
             // 轮廓本身只跟"显示的是哪张立绘"有关，换图才重建
             if (_outline == null || _outlineKey != key)
             {
+                // ★ 选 SF-07 时，必须等 LoadingArt 把 sprite 换成我们的图再画轮廓。
+                //   否则用的是原版 EXPie 的 alpha —— 形状对不上，看起来就是「轮廓偏移」。
+                if (CharacterSelect.Current == CharacterSelect.Sf07 && !LoadingArt.IsOurs(sp))
+                    return;
+
                 _outline = BuildOutline(sp, OutlineRadius);
                 _outlineKey = key;
                 _boundId = 0;                 // 新轮廓 → 必须重新绑定
@@ -132,8 +166,16 @@ public static class MenuArt
     // back15 / back15blink1 / back15blink2 共用一张轮廓（轮廓形状不随眨眼变）
     private static string NormalizeKey(string k)
     {
-        if (!string.IsNullOrEmpty(k) && k.StartsWith("back15")) return "back15";
-        return k;
+        if (string.IsNullOrEmpty(k)) return k;
+        // 同一角色的三帧归成一个 key（眨眼帧不重建轮廓）：
+        //   back15 / back15blink1 / back15blink2          → back15
+        //   back15milky / back15milkyblink1               → back15milky
+        //   back15dune / back15duneblink1                 → back15dune
+        // ★ 以前只要 StartsWith("back15") 就归成 back15，导致切到 Milky/Dune
+        //   时 key 不变、轮廓不重建（形状不切 + 位置偏移）。
+        if (!k.StartsWith("back15", StringComparison.Ordinal)) return k;
+        int bi = k.IndexOf("blink", StringComparison.Ordinal);
+        return bi > 0 ? k.Substring(0, bi) : k;
     }
 
     private static void FindExperiment()
@@ -147,12 +189,18 @@ public static class MenuArt
         if (root == null) return;
 
         var gs = root.GetComponentsInChildren<Image>(true);
+        Image fallback = null;
         for (int i = 0; i < gs.Length; i++)
         {
             var g = gs[i];
             if (g == null || g.gameObject == null) continue;
             if (g.gameObject.name != "Experiment") continue;
             if (g.sprite == null) continue;
+
+            bool hasBlink = false;
+            foreach (var c in g.GetComponents<Component>())
+                if (c != null && c.GetType().Name == "MenuExperimentBlink") { hasBlink = true; break; }
+            if (!hasBlink) { if (fallback == null) fallback = g; continue; }
 
             _img = g;
             _blink = null;            // 新实例 → 重新找组件
@@ -162,6 +210,16 @@ public static class MenuArt
             _moved.Clear();
             Plugin.Log.LogInfo($"[STEMFishDLC] 菜单立绘：找到 Experiment（{g.GetType().Name}，sprite={g.sprite.name}）");
             return;
+        }
+
+        if (fallback != null)
+        {
+            _img = fallback;
+            _blink = null;
+            _outlineImg = null;
+            _boundId = 0;
+            _logged.Clear();
+            _moved.Clear();
         }
     }
 
@@ -363,19 +421,10 @@ public static class MenuArt
         const BindingFlags F = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         int n = 0;
 
-        // --- Sprite[] outlineSprites：三项（或更多）全部换成我们的轮廓 ---
-        var fArr = type.GetField("outlineSprites", F);
-        var arr = fArr != null ? fArr.GetValue(c) as Sprite[] : null;
-        if (arr != null && arr.Length > 0)
-        {
-            string old = arr[0] != null
-                ? $"{arr[0].name} {arr[0].rect.width:0}×{arr[0].rect.height:0}"
-                : "null";
-            for (int i = 0; i < arr.Length; i++) arr[i] = _outline;     // 原地改，Start 重跑也生效
-            n++;
-            if (_logged.Add("outlineSprites"))
-                Plugin.Log.LogInfo($"[STEMFishDLC] 菜单立绘：outlineSprites[{arr.Length}] 已替换（旧 {old}）");
-        }
+        // ★ 不改 outlineSprites 数组：那是原版三个角色的轮廓，被我们覆盖后，
+        //   ApplyMenuPortrait 切回原版角色时会拿到错的图。只改 outline Image 自己的 sprite。
+        //   （原版 Start 重跑时会把 outline 设回 outlineSprites[0]，我们的 Invalidate
+        //    会让 Tick 重新绑定，不怕。）
 
         // --- Image outline：Start 已经跑过的话，光改数组不会立刻生效 ---
         var fImg = type.GetField("outline", F);
@@ -391,25 +440,11 @@ public static class MenuArt
                 Plugin.Log.LogInfo($"[STEMFishDLC] 菜单立绘：轮廓 Image（原 {info}{rect}）已换上生成轮廓");
             }
             oimg.sprite = _outline;
-            // ★ 只换 sprite 不够：outline Image 的 RectTransform 还是旧美术的尺寸/位置，
-            //   而新轮廓是按当前立绘生成的 → 两层边错开，看起来就是"双描边"。
-            //   把主立绘的矩形原样抄过去，两层就重合了。
-            try
-            {
-                var srcRt = _img != null ? _img.rectTransform : null;
-                var dstRt = oimg.rectTransform;
-                if (srcRt != null && dstRt != null)
-                {
-                    dstRt.anchorMin = srcRt.anchorMin;
-                    dstRt.anchorMax = srcRt.anchorMax;
-                    dstRt.pivot = srcRt.pivot;
-                    dstRt.sizeDelta = srcRt.sizeDelta;
-                    dstRt.anchoredPosition = srcRt.anchoredPosition;
-                    dstRt.localScale = srcRt.localScale;
-                    dstRt.localRotation = srcRt.localRotation;
-                }
-            }
-            catch { }
+            // ★ 不再把主图的 RectTransform 抄给轮廓。
+            //   轮廓和主图的父级/锚点不是同一套，抄 anchoredPosition 必然错位；
+            //   而且这个错位会一直留着（切回原版角色时 MenuArt 不再接管，没人改回去），
+            //   只有重开游戏重建场景才恢复 —— 正是"选过 SF-07 后轮廓整体上移"的现象。
+            //   原版轮廓本来就和主图对齐，我们生成的 sprite 几何也照抄主图，所以不用改 RT。
             n++;
         }
 
@@ -546,8 +581,14 @@ public static class MenuArt
 
                 if (_moved.Add(trt.GetInstanceID()))
                 {
+                    // v0.23：按文字框实际高度再抬半个字高，让**字底边**落在 top+gap 之上，
+                    // 上限 30px（两行预留框别把字顶到屏幕外）
+                    float lift = 0f;
+                    try { lift = Mathf.Clamp(trt.rect.height * 0.5f, 0f, 30f); } catch { }
+                    var final = new Vector2(pos.x, pos.y + lift);
+
                     // Start 是 localPosition += textOffset[chr]，所以我们也用 localPosition
-                    trt.localPosition = new Vector3(pos.x, pos.y, trt.localPosition.z);
+                    trt.localPosition = new Vector3(final.x, final.y, trt.localPosition.z);
 
                     // 顺手把 textOffset 也改成同一位置（Start 若重跑，量不会再次叠加）
                     try
@@ -557,11 +598,11 @@ public static class MenuArt
                         var fChr = type.GetField("chr", F);
                         int chr = fChr != null ? Convert.ToInt32(fChr.GetValue(c)) : 0;
                         if (offs != null && offs.Length > 0 && chr >= 0 && chr < offs.Length)
-                            offs[chr] = new Vector2(pos.x, pos.y);      // 基准位置本来就是 (0,0)+偏移
+                            offs[chr] = final;
                     }
                     catch { }
 
-                    Plugin.Log.LogInfo($"[STEMFishDLC] 菜单立绘：文字（组件 text 字段）已移到 {pos}");
+                    Plugin.Log.LogInfo($"[STEMFishDLC] 菜单立绘：文字（组件 text 字段）已移到 {final}（抬升 {lift:0}）");
                 }
                 return true;
             }

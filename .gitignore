@@ -48,3 +48,7 @@ CU_ServerPilot_v0.10.*.zip
 STEMFishDLC/PLAN.md
 STEMFishDLC/LORE_BRIEF.md
 *.disabled
+
+# ---- 临时 / 中间产物 ----
+assets/
+tmp_prev/

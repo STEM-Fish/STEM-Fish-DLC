@@ -91,6 +91,12 @@ public static class CrateScatter
         try { w = WorldGeneration.world; } catch { }
         if (w == null) { _world = null; _depth = -9999; _done = false; return; }
 
+        // 教程保持原版：不往教学关里撒弹药箱
+        if (CharacterSelect.IsTutorial()) return;
+
+        // 弹药箱也是 SF-07 的补给，原版角色不刷
+        if (CharacterSelect.Current != CharacterSelect.Sf07) return;
+
         var pc = PlayerCamera.main;
         if (pc == null || pc.body == null) return;      // 等玩家出生（世界生成完成的天然信号）
         try { if (!w.worldExists) return; } catch { return; }

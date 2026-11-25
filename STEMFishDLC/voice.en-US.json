@@ -1,17 +1,39 @@
 {
-  "_note": "Story-critical lines are translated here. If an expand key is absent, FishVoice preserves the game's own English line for that situation, so the base game's native reactions fill the gaps.",
+  "_note": "Every line SF-07 says is written here in his own voice. Only trader and NPC responses (trader*, *response) fall back to the base game's English, because those are not him speaking.",
   "expand": {
-    "cargo1": ["I... I think this is it... right...? Right...?"],
-    "cargo2": ["This... doesn't look like a battery... What... what are you going to...?"],
-    "cargoimpale": ["Aaaagh! What the—?! This shouldn't—?!"],
-    "cargoimpale2": ["Ugh... okay... I... I feel... something being pumped into me...? I feel... lighter."],
-    "cargoimpale3": ["I... I actually did it... All right... let's not get carried away... I think I can use that drill pod over there to get back. Head for the surface."],
-    "endlessloop0": ["...Why...? How did I...? Just now... why am I back here...? Huh? What just happened...?"],
-    "endlessloop1": ["...This is not what I expected at all... I don't know what else I can do... Fine. Ugh. Third time's the charm, maybe...?"],
-    "endlessloop2": ["Ugh, aaaagh!! What am I supposed to do?! Damn it... fuck that heart... Huh... I have to keep going down anyway if I want to live. What a mess."],
-    "endlessloop3": ["Fine. I can't get out, can I? I... I think I'm used to it."],
-    "endlessloopdefault": ["Oh, layer after layer... round and round..."],
-    "endpodexamine": ["The cargo... matters..."],
+    "cargo1": [
+      "I... I think this is it... right...? Right...?"
+    ],
+    "cargo2": [
+      "This... doesn't look like a battery... What... what are you going to...?"
+    ],
+    "cargoimpale": [
+      "Aaaagh! What the—?! This shouldn't—?!"
+    ],
+    "cargoimpale2": [
+      "Ugh... okay... I... I feel... something being pumped into me...? I feel... lighter."
+    ],
+    "cargoimpale3": [
+      "I... I actually did it... All right... let's not get carried away... I think I can use that drill pod over there to get back. Head for the surface."
+    ],
+    "endlessloop0": [
+      "...Why...? How did I...? Just now... why am I back here...? Huh? What just happened...?"
+    ],
+    "endlessloop1": [
+      "...This is not what I expected at all... I don't know what else I can do... Fine. Ugh. Third time's the charm, maybe...?"
+    ],
+    "endlessloop2": [
+      "Ugh, aaaagh!! What am I supposed to do?! Damn it... fuck that heart... Huh... I have to keep going down anyway if I want to live. What a mess."
+    ],
+    "endlessloop3": [
+      "Fine. I can't get out, can I? I... I think I'm used to it."
+    ],
+    "endlessloopdefault": [
+      "Oh, layer after layer... round and round..."
+    ],
+    "endpodexamine": [
+      "The cargo... matters..."
+    ],
     "labcommentcalm": [
       "Nnh... aah... they will pay for this...",
       "They have to pay for this...",
@@ -38,19 +60,35 @@
       "YOU ANIMALS IN HUMAN CLOTHES!!",
       "GO TO HELL!!!"
     ],
-    "labenter": ["(Play along for now. Wait for a chance, then take him. I know the ducts here. They'll get me out.)"],
-    "labresponse": ["(Keep talking... a little more, and you're done.)"],
-    "labshoot": ["AAAAAGH!! DIE—!"],
-    "labthink1": ["(Now. Hmm... if only I had a gun...)"],
-    "labthink2": ["(I could... kill him. Blow out that thing in the ceiling... through the grate... freedom...?)"],
-    "labthink2chip": ["(I could... no. The chip is still there. My life is still in their hands. ...Go!)"],
+    "labenter": [
+      "(Play along for now. Wait for a chance, then take him. I know the ducts here. They'll get me out.)"
+    ],
+    "labresponse": [
+      "(Keep talking... a little more, and you're done.)"
+    ],
+    "labshoot": [
+      "AAAAAGH!! DIE—!"
+    ],
+    "labthink1": [
+      "(Now. Hmm... if only I had a gun...)"
+    ],
+    "labthink2": [
+      "(I could... kill him. Blow out that thing in the ceiling... through the grate... freedom...?)"
+    ],
+    "labthink2chip": [
+      "(I could... no. The chip is still there. My life is still in their hands. ...Go!)"
+    ],
     "wwmr": [
       "All right... I'm here... I finally made it. Come on, the objective should be somewhere around here.",
       "Uh... the target... should be in this area... stop wandering, let's go.",
       "I made it... did I...? Hmm... I think the thing is close... let's end this."
     ],
-    "wwmrwrongway": ["I think I went the wrong way... I should head toward the source of those strange pulses..."],
-    "ascententer": ["Looks like it can only take me this far... no way back. Let's go."],
+    "wwmrwrongway": [
+      "I think I went the wrong way... I should head toward the source of those strange pulses..."
+    ],
+    "ascententer": [
+      "Looks like it can only take me this far... no way back. Let's go."
+    ],
     "selfdestruct": [
       "...That sound. Beep. Beep.",
       "Wait. Wait wait—",
@@ -81,7 +119,10 @@
       "So this is it... dying...",
       "So cold... so this is what it feels like."
     ],
-    "lastmoments": ["...Who... why...", "...Huh..."],
+    "lastmoments": [
+      "...Who... why...",
+      "...Huh..."
+    ],
     "seecorpse": [
       "...Fell to death.",
       "Another one.",
@@ -109,7 +150,15 @@
       "...Sorry. I don't know you.",
       "...Sorry."
     ],
-    "refuse": ["...", "No.", "Forget it. Stop.", "...Don't.", "Not doing it.", "I won't do this.", "Ugh."],
+    "refuse": [
+      "...",
+      "No.",
+      "Forget it. Stop.",
+      "...Don't.",
+      "Not doing it.",
+      "I won't do this.",
+      "Ugh."
+    ],
     "suicide": [
       "Enough. This is where it stops.",
       "It's over.",
@@ -133,6 +182,305 @@
       "Fuck... ...feels good.",
       "I know this is wrong. I know. ...Again.",
       "No one... hhh... haha..."
+    ],
+    "hungry": [
+      "I should probably get some energy in me.",
+      "Hungry... my stomach is complaining.",
+      "Time to find some fuel for the mitochondria."
+    ],
+    "starving": [
+      "No... is there anything to eat?",
+      "If I don't find food soon, I'm actually going to starve.",
+      "Supplies... where are my supplies?"
+    ],
+    "thirsty": [
+      "Why the hell is there no water in this place?",
+      "Water... where...",
+      "I can feel my blood getting thicker."
+    ],
+    "dehydrated": [
+      "Dehydrated... am I jerky now?",
+      "Keep going... I have to find water..."
+    ],
+    "exhausted": [
+      "Can't run... legs are burning.",
+      "I want to sit down for a moment."
+    ],
+    "tired": [
+      "...Sleepy.",
+      "Head's foggy. Better find somewhere to sleep."
+    ],
+    "verytired": [
+      "Can't keep this up... stop...",
+      "Eyes... won't open... don't..."
+    ],
+    "freezing": [
+      "C-cold... my fingers won't listen.",
+      "This temperature... will kill me. It really will.",
+      "My fur's standing up. Still not enough."
+    ],
+    "cold": [
+      "A bit cold. Need another layer.",
+      "Too chilly... a little exercise would fix it."
+    ],
+    "hot": [
+      "Hot... can't stop sweating.",
+      "Why is this place so stuffy?"
+    ],
+    "bleeding": [
+      "...Hiss... where's the bandage?",
+      "I'd better stop this bleeding fast."
+    ],
+    "bleedingheavy": [
+      "...No, I won't make it like this.",
+      "Heavy bleeding— where's the— hurry..."
+    ],
+    "sick": [
+      "Guess I should try to eat something normal...",
+      "A bit queasy... it's fine.",
+      "Since when did my gut become a reactor vessel?"
+    ],
+    "verysick": [
+      "Damn... ugh...",
+      "No... is there any medicine..."
+    ],
+    "pain": [
+      "Ugh... I need to deal with this wound.",
+      "Pain— anything for the pain—",
+      "Hold on... it'll pass. It'll pass."
+    ],
+    "gloomy": [
+      "...There's a weight in my chest.",
+      "Stay here too long and you stop being normal."
+    ],
+    "sad": [
+      "...Hah.",
+      "I don't really want to talk."
+    ],
+    "depressed": [
+      "They built me to fight their war?",
+      "Sometimes I wonder... are these thoughts even mine?",
+      "Down. Down. How many more layers?"
+    ],
+    "miserable": [
+      "Pain, hunger, cold... all at once. Fine.",
+      "Do I look like something built for war right now?"
+    ],
+    "confused": [
+      "Wait... wait. What was I thinking about?",
+      "Head's a mess. Slow down. Start again."
+    ],
+    "dirty": [
+      "I'm filthy... wounds will get infected.",
+      "My fur's matted into clumps."
+    ],
+    "encumbered": [
+      "Carrying too much... can't move.",
+      "Have to drop something. But I can't bear to lose any of it."
+    ],
+    "limbmuscle": [
+      "Ugh... the muscle's damaged... I need to treat it.",
+      "Pulled something. Move carefully."
+    ],
+    "limbskin": [
+      "This place is hardly short on microbes... hope it doesn't...",
+      "Small cut— better find something to disinfect it."
+    ],
+    "limbinfected": [
+      "Infected... think... maybe saponification of fat could help me...",
+      "This wound's wrong... it's suppurating.",
+      "Need to disinfect— did I bring any?"
+    ],
+    "cantBreathe": [
+      "Hah... hah... can't get air...",
+      "My chest... so tight.",
+      "Breathe slower. Slower."
+    ],
+    "braindamage": [
+      "My thinking... is slowing down.",
+      "It's like something's smeared over my brain."
+    ],
+    "braindamaged": [
+      "...What was I doing?",
+      "Can't remember. Again."
+    ],
+    "wet": [
+      "Soaked... better not get cold.",
+      "Water... feels good, but too cold."
+    ],
+    "warm": [
+      "Warming up... nice.",
+      "Now this is a proper temperature."
+    ],
+    "opiatewithdrawal": [
+      "Hands are shaking... the dose is wearing off.",
+      "It hurts. Bear it."
+    ],
+    "opiated": [
+      "...Much better. No pain.",
+      "I really don't want to use this stuff... no choice..."
+    ],
+    "eatGood": [
+      "This is a little luxurious...",
+      "Mm... good."
+    ],
+    "eatBad": [
+      "Food is food, but this... ugh...",
+      "Tastes awful— just swallow it."
+    ],
+    "eatMediocre": [
+      "Edible. Passable.",
+      "Nothing special. At least it doesn't hurt."
+    ],
+    "seeGravel": [
+      "Another new layer. Map? None.",
+      "Down. Always down."
+    ],
+    "refuseEat": [
+      "No.",
+      "Stop.",
+      "I'd rather starve.",
+      "Take it away. I said no.",
+      "...",
+      "Don't even think about it.",
+      "...No."
+    ],
+    "vomit": [
+      "Ugh... ugh...",
+      "Cough... cough...",
+      "...That bite was wasted.",
+      "My stomach's coming up... no.",
+      "Ugh... damn...",
+      "Even now, there's still something to throw up.",
+      "...Better. That was disgusting."
+    ],
+    "vomitblood": [
+      "...Ugh. ...It's blood.",
+      "Cough... blood. From my stomach.",
+      "No. That's not food residue.",
+      "I'm vomiting blood. ...",
+      "...Fuck. Blood.",
+      "I might need a chest drain.",
+      "Cough! Ugh— ugh..."
+    ],
+    "full": [
+      "Enough.",
+      "One more bite and I'll throw up.",
+      "...Full. Rare.",
+      "My stomach aches from stretching. Stop.",
+      "Save it. Make it last."
+    ],
+    "angeronitem": [
+      "This piece of junk.",
+      "...You've got to be kidding me.",
+      "Fine. Fine. I'm not angry.",
+      "One more time and I'm throwing this thing away."
+    ],
+    "steponglass": [
+      "...Hiss. Glass.",
+      "Stepped on it again.",
+      "...Didn't clean it up properly... hurts...",
+      "Who leaves this on the floor?",
+      "...Need to check if it went in."
+    ],
+    "seecorpsedesensitized": [
+      "Same as always. Just a matter of time.",
+      "How many does that make?...",
+      "...",
+      "...Take something and go.",
+      "...Rest well.",
+      "Does anyone count these numbers?",
+      "...That's enough."
+    ],
+    "seecorpsesuicidal": [
+      "...Soon it'll be me.",
+      "I'm a little jealous.",
+      "You've reached your stop. I still have to walk.",
+      "Save me a place.",
+      "...Same exit.",
+      "Doesn't look painful. I hope it isn't."
+    ],
+    "exerted": [
+      "Hah... hah...",
+      "Just stop. Just for a second.",
+      "Lungs are burning.",
+      "...I'm done. Really.",
+      "Two more steps. Just two.",
+      "My heart's beating too fast."
+    ],
+    "emaciated": [
+      "I can feel my ribs. One by one.",
+      "I can't keep starving like this.",
+      "...Find something with fat in it.",
+      "I'm down to a skeleton. That's not good.",
+      "I should stock up on food... or I won't last."
+    ],
+    "obese": [
+      "I've gotten heavy.",
+      "...Been eating too much lately.",
+      "I jiggle when I run.",
+      "Reserves are a little excessive.",
+      "Guess some of the food I find... shouldn't be eaten in bulk."
+    ],
+    "opiatedsad": [
+      "...Good. Good.",
+      "It's quiet now.",
+      "Just for a while. Don't call me.",
+      "The pain's gone. Half of me went with it.",
+      "...Don't make me think.",
+      "A little more. Just a little.",
+      "This way I can sleep."
+    ],
+    "hitgroundhard": [
+      "Ugh!",
+      "...Gah.",
+      "Fuck.",
+      "...Landed.",
+      "My back. My back.",
+      "...Fine. Nothing's broken."
+    ],
+    "fallscream": [
+      "Aaaaah—",
+      "Not again—",
+      "Fuck fuck fuck—",
+      "Come on, please!",
+      "AAAAH!"
+    ],
+    "hitbycreature": [
+      "Fuck! Get off!",
+      "AAAH!",
+      "Get off me!",
+      "Don't bite— ugh!",
+      "Ugh! Damn it!",
+      "...It got a bite in."
+    ],
+    "watchlike": [
+      "This watch-like thing... I like it.",
+      "Feels good on the wrist.",
+      "This watch might be useful."
+    ],
+    "loud": [
+      "...Fuck.",
+      "My ears. My ears.",
+      "So loud I can't hear. Great.",
+      "...Tinnitus.",
+      "Who the hell is shooting— oh. Me."
+    ],
+    "tradeemeet": [
+      "Hey!",
+      "Hello?",
+      "Oh! Hello!",
+      "Hm?",
+      "Finally, someone...",
+      "...Hello?",
+      "Hi!",
+      "Hello!"
+    ],
+    "magicheal": [
+      "...Hah-ugh.",
+      "The pain's gone. ...Why.",
+      "This feels wrong. But I want it.",
+      "...Again."
     ]
   },
   "chatter": {
@@ -167,11 +515,26 @@
       "Still walking... don't stop.",
       "...Anyone?"
     ],
-    "pain": ["Ow... ugh, bear with it.", "Aaaagh!"],
-    "hungry": ["I might need to top up.", "...Hungry. Find something to eat."],
-    "thirsty": ["...I should watch my water.", "Water... find water first."],
-    "cold": ["Cold... fur's standing up.", "If I don't do something, the cold will get me."],
-    "wound": ["Ow... hhh...", "Careful... Focus..."],
+    "pain": [
+      "Ow... ugh, bear with it.",
+      "Aaaagh!"
+    ],
+    "hungry": [
+      "I might need to top up.",
+      "...Hungry. Find something to eat."
+    ],
+    "thirsty": [
+      "...I should watch my water.",
+      "Water... find water first."
+    ],
+    "cold": [
+      "Cold... fur's standing up.",
+      "If I don't do something, the cold will get me."
+    ],
+    "wound": [
+      "Ow... hhh...",
+      "Careful... Focus..."
+    ],
     "radiation": [
       "Which genius put nuclear waste down here?",
       "I'm pretty sure DNA doesn't like this stuff."
@@ -185,12 +548,24 @@
       "Reloading!",
       "Come on... come on..."
     ],
-    "ammobox": ["Box is open. Take it."],
-    "lorefound": ["Find somewhere to sit and read the tablet later."],
-    "loremore": ["...One more."],
-    "corpse": ["...He was thrown down here too."],
-    "clothing": ["There."],
-    "starterkit": ["Make it last. This is already plenty."],
+    "ammobox": [
+      "Box is open. Take it."
+    ],
+    "lorefound": [
+      "Find somewhere to sit and read the tablet later."
+    ],
+    "loremore": [
+      "...One more."
+    ],
+    "corpse": [
+      "...He was thrown down here too."
+    ],
+    "clothing": [
+      "There."
+    ],
+    "starterkit": [
+      "Make it last. This is already plenty."
+    ],
     "jammer": [
       "When I came into this layer, the box in my pocket was still cold. The thing in my nape was hot. There was no cargo in my belly yet, but I already knew it was below.",
       "The file was clear: to shut the chip up, I need the jammer. It works on one layer only, once only, and this is that layer.",

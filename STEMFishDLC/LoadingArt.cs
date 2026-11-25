@@ -46,6 +46,38 @@ public static class LoadingArt
     private static readonly List<Image> _targets = new List<Image>();
     private static readonly HashSet<string> _logged = new HashSet<string>();
     private static readonly HashSet<int> _ours = new HashSet<int>();   // 我们自己造的 sprite，别二次处理
+    private static readonly Dictionary<string, Sprite> _originals = new Dictionary<string, Sprite>();  // 被替换前的原图（按 key）
+
+    /// <summary>被替换掉的原版 sprite（主菜单 back15 切回 EXPie 时要用）</summary>
+    public static Sprite OriginalSprite(string key)
+    {
+        try { return _originals.TryGetValue(key, out var s) ? s : null; } catch { return null; }
+    }
+
+    /// <summary>这个 sprite 是不是我们自己生成的（被替换后的图）</summary>
+    public static bool IsOurs(Sprite sp)
+    {
+        try { return sp != null && _ours.Contains(sp.GetInstanceID()); } catch { return false; }
+    }
+
+    /// <summary>我们生成的同名 sprite（按 key 前缀查缓存）</summary>
+    public static Sprite OurSprite(string key)
+    {
+        try
+        {
+            foreach (var kv in _spriteCache)
+                if (kv.Key.StartsWith(key + "|", StringComparison.Ordinal)) return kv.Value;
+        }
+        catch { }
+        return null;
+    }
+
+    // 主菜单立绘是否该用我们的图：只有选 SF-07 时才换，选原版角色保持原画
+    private static bool WantsOurBack15(string key)
+    {
+        if (string.IsNullOrEmpty(key) || !key.StartsWith("back15", StringComparison.Ordinal)) return true;
+        return CharacterSelect.Current == CharacterSelect.Sf07;
+    }
     private static readonly HashSet<string> _logged2 = new HashSet<string>();  // 替换日志去重
     private static readonly Dictionary<string, string> _alias = new Dictionary<string, string>();  // 对象名 → 已用过的 key
     private static readonly HashSet<string> _missLogged = new HashSet<string>();
@@ -253,6 +285,9 @@ public static class LoadingArt
                     _alias[go.name] = key;
             }
 
+            if (!_originals.ContainsKey(key)) _originals[key] = value;
+            if (!WantsOurBack15(key)) return;              // 选原版角色 → 主菜单立绘不换
+
             var sp = GetSprite(key, value);
             if (sp != null)
             {
@@ -329,6 +364,9 @@ public static class LoadingArt
                 string key = _tex.ContainsKey(img.gameObject.name) ? img.gameObject.name
                            : (_tex.ContainsKey(cur.name) ? cur.name : null);
                 if (key == null) continue;
+
+                if (!_originals.ContainsKey(key)) _originals[key] = cur;
+                if (!WantsOurBack15(key)) continue;          // 选原版角色 → 主菜单立绘不换
 
                 var want = GetSprite(key, cur);
                 if (want != null && cur != want) img.sprite = want;

@@ -102,6 +102,9 @@ public static class BodyProportion
         try { body = PlayerCamera.main != null ? PlayerCamera.main.body : null; } catch { }
         if (body == null) return;
 
+        // v0.23：身高 170 / 血渍缩放都是 SF-07 的设定，原版 EXPie / Milky / Dune 不该被改
+        if (!CharacterSelect.IsSf07(body)) return;
+
         // bloodScale 只被 WoundView.UpdateView 用来缩放伤口视图里的血渍，
         // 跟体型同比例视觉才对得上（不影响任何玩法数值）
         try

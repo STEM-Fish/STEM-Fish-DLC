@@ -57,6 +57,7 @@ public static class SpikeCrawler
     private static int _tries;                  // 投放失败重试次数
     private static float _pending = -1f;        // >0 = 正在等"地形实例化"的倒计时
     private static Sprite _spikeSprite;
+    private static bool _loggedNotSf07;      // 「不是 SF-07 就不投放」只记一次日志
 
     // ==========================================================================
     //  初始化
@@ -303,6 +304,20 @@ public static class SpikeCrawler
     // ==========================================================================
     private static void EnsureSpawn(Body body)
     {
+        // ★ 只在 SF-07 的局里投放。
+        //   判定放在**我们自己写的投放函数**入口：选原版角色时这段逻辑根本不启用，
+        //   原版刷怪管线（WorldGeneration / DistributeEntities）一行都没被我们拦过，
+        //   它们该刷什么、刷多少，完全按原版走。
+        if (!CharacterSelect.IsPlayerSf07())
+        {
+            if (!_loggedNotSf07)
+            {
+                _loggedNotSf07 = true;
+                Plugin.Log.LogInfo("[STEMFishDLC] 尖刺爬行者：当前不是 SF-07，我们的投放逻辑不启用");
+            }
+            return;
+        }
+
         WorldGeneration w;
         try { w = WorldGeneration.world; } catch { return; }
         if (w == null) { _world = null; return; }
@@ -440,7 +455,7 @@ public static class SpikeCrawler
             var sh = go.GetComponent<SpiderHandler>();
             if (sh == null) { UnityEngine.Object.Destroy(go); return null; }
 
-            if (!Register(go, sh)) return null;
+            if (!Register(go, sh)) { UnityEngine.Object.Destroy(go); return null; }
             return go;
         }
         catch (Exception e)
@@ -455,6 +470,11 @@ public static class SpikeCrawler
     private static bool Register(GameObject go, SpiderHandler sh)
     {
         if (go == null || sh == null) return false;
+
+        // 同一个门槛：原版角色局里，即使场上有原版刷出来的 thornbackyoung，
+        // 也不把它改造成尖刺爬行者 —— 让它保持原版行为。
+        if (!CharacterSelect.IsPlayerSf07()) return false;
+
         try
         {
             // 只远程：近战伤害全清零

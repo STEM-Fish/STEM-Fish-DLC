@@ -78,6 +78,9 @@
     "modmenu.write.pending": "<color=#d8a83e>待写入</color>",
     "modmenu.write.none": "无需写入",
     "modmenu.write.hint": "写完后从 Steam 手动重启游戏",
+    "modmenu.section.general": "通用",
+    "modmenu.language": "文本语言",
+    "modmenu.language.desc": "点击切换：跟随游戏 → 中文 → English（完整生效需重启游戏）",
     "modmenu.section.modules": "<b>模块</b>   <color=#5a6672>点击切换</color>",
     "modmenu.section.hotkeys": "<b>热键</b>   <color=#5a6672>游戏内随时可用</color>",
     "modmenu.section.debug": "<b>调试</b>   <color=#5a6672>默认关闭；打开后下列按键才会生效</color>",
@@ -259,6 +262,8 @@
     "dlc.state.hypothermia": "体温过低",
     "dlc.state.hyperthermia": "体温过高",
     "dlc.state.stillbleeding": "还在流",
-    "dlc.state.overloaded": "背得太多了"
+    "dlc.state.overloaded": "背得太多了",
+    "modmenu.language.saved": "语言已改为 {0} · 重启游戏后全部生效",
+    "newrun.character": "角色"
   }
 }
