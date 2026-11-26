@@ -10,7 +10,7 @@
 
 说明：是非官方MOD，此角色设定并不是 Casualties: Unknown 或 Gunsaw 原设定之中的。设定版权归开发者所有。但这不影响你可以免费获得这个 MOD 进行游玩，并可以任意进行开源的二次开发。详见 License。
 
-当前版本：**0.23.1**（插件 GUID：`com.stemfish.dlc`）
+当前版本：**0.23.2**（插件 GUID：`com.stemfish.dlc`）
 
 ---
 
@@ -49,13 +49,16 @@
 
 ### 语言 / Language
 
-- 首次启动按**游戏语言**自动选择：英文游戏 → `en-US`，中文游戏 → `zh-CN`。
+- 首次启动按**游戏语言**自动选择：英文游戏 → `en-US`，中文游戏 → `zh-CN`，俄语游戏 → `ru-RU`。
 - **游戏内也能切**：主菜单右上角「MOD 管理」→ 模块页 → 通用 → **文本语言**，
-  点一下按 `跟随游戏 → 中文 → English` 循环。词库 / 界面文案 / 物品名 / 档案立刻重载，
-  少数已经生成到屏幕上的 TMP 文本重启后完全一致。
-- 也可以直接改 `BepInEx/config/com.stemfish.dlc.cfg` 的 `[General] Language`。
-- 五个文本表都有中英两份：`items.*.json` / `voice.*.json` / `lore.*.json` / `ui.*.json` / `chars.*.json`；
+  点一下按 `跟随游戏 → 中文 → English → Русский` 循环（包里没有 ru 文件时自动跳过 Русский）。
+  词库 / 界面文案 / 物品名 / 档案立刻重载，少数已经生成到屏幕上的 TMP 文本重启后完全一致。
+- 也可以直接改 `BepInEx/config/com.stemfish.dlc.cfg` 的 `[General] Language`
+  （`auto` / `zh-CN` / `en-US` / `ru-RU`）。
+- 五个文本表都有中 / 英 / 俄三份：`items.*.json` / `voice.*.json` / `lore.*.json` / `ui.*.json` / `chars.*.json`；
   界面里原本硬编码的文字也已经搬进 `ui.*.json` 的 `strings` 段。
+- 俄文是**逐键合并**的：以 `en-US` 为底，`ru-RU` 里有的键覆盖上去，没翻到的键保留英文。
+  所以只翻一半也能直接用，不会突然冒出一句中文；`lore` 的 11 篇按 `id` 合并。
 - 英文版里，**档案 + 全部主角台词 + 界面**都是重写的；只有商人 / NPC 的回应保留
   游戏原版英文（说话的不是 SF-07）。
 
@@ -109,7 +112,7 @@ Casualties Unknown/
 └── winhttp.dll / doorstop_config.ini （BepInEx 自带）
 ```
 
-3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.23.1 =====` 即成功。
+3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.23.2 =====` 即成功。
 
 > 联机：可与 **Casualties: Together v5.4.0**（KrokMP 的续作）共存。
 > 进游戏前建议先在 `Settings > General` 里确认联机开关状态。
