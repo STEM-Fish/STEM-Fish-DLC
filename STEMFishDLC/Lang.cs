@@ -125,6 +125,7 @@ public static class Lang
         try { UiText.Reload(); } catch { }
         try { ItemText.Reload(); } catch { }
         try { LoreData.Reload(); } catch { }
+        try { SfBlood.RefreshText(); } catch { }   // 自定义液体的名字也跟着语言走
     }
 
     // 面板上显示用的短标签
@@ -313,4 +314,8 @@ public static class Lang
 
     // 短小的代码内回退（没有 json 时用）。俄文用英文兜底。
     public static string T(string zh, string en) => IsChinese ? zh : en;
+
+    // 需要给俄文单独一份时用这个（主菜单 / 选角页这种写死在代码里的按钮）
+    public static string T3(string zh, string en, string ru)
+        => IsRussian ? ru : (IsChinese ? zh : en);
 }

@@ -664,7 +664,7 @@ public static class CharacterSelect
             // Start 按钮文本每帧守一次：原版 AdaptiveButton 可能会把文字刷回去
             if (_startBtn != null)
             {
-                string want = Lang.T("选择角色", "SELECT CHARACTER");
+                string want = Lang.T3("选择角色", "SELECT CHARACTER", "ВЫБРАТЬ ПЕРСОНАЖА");
                 foreach (var t in _startBtn.GetComponentsInChildren<TMP_Text>(true))
                     if (t != null && t.text != want) t.text = want;
             }
@@ -787,7 +787,7 @@ public static class CharacterSelect
             btn.colors = bc;
             btn.onClick.AddListener(OpenPicker);
 
-            var t = NewText(rt, "Label", Lang.T("选择角色", "CHARACTER"), 18f, Color.white, TextAlignmentOptions.Center);
+            var t = NewText(rt, "Label", Lang.T3("选择角色", "CHARACTER", "ПЕРСОНАЖ"), 18f, Color.white, TextAlignmentOptions.Center);
             var trt = t.rectTransform;
             trt.anchorMin = Vector2.zero;
             trt.anchorMax = Vector2.one;
@@ -877,7 +877,7 @@ public static class CharacterSelect
             {
                 Plugin.Log.LogInfo($"[STEMFishDLC] 选角确认键 = {_startBtn.name}");
                 _startBtn.interactable = true;
-                string label = Lang.T("选择角色", "SELECT CHARACTER");
+                string label = Lang.T3("选择角色", "SELECT CHARACTER", "ВЫБРАТЬ ПЕРСОНАЖА");
                 foreach (var t in _startBtn.GetComponentsInChildren<TMP_Text>(true)) if (t != null) t.text = label;
                 foreach (var t in _startBtn.GetComponentsInChildren<UnityEngine.UI.Text>(true)) if (t != null) t.text = label;
             }

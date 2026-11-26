@@ -39,6 +39,14 @@ public static class FishLocalization
             }
             var postfix = typeof(FishLocalization).GetMethod("GetString_Postfix", BindingFlags.NonPublic | BindingFlags.Static);
             harmony.Patch(target, postfix: new HarmonyMethod(postfix));
+
+            // 液体名 / 描述走 GetOther；我们的 sfblood 不在游戏语言表里，需要在这条链上补
+            var other = AccessTools.Method(typeof(Locale), "GetOther");
+            if (other != null)
+            {
+                var opost = typeof(FishLocalization).GetMethod("GetOther_Postfix", BindingFlags.NonPublic | BindingFlags.Static);
+                harmony.Patch(other, postfix: new HarmonyMethod(opost));
+            }
             var info = Harmony.GetPatchInfo(target);
             _patched = true;
 
@@ -70,6 +78,18 @@ public static class FishLocalization
         if (!string.IsNullOrEmpty(desc)) Map[id + "dsc"] = desc;
     }
 
+    // 液体名 / 描述走 Locale.GetOther(localeName)，和物品的 GetString 不是同一条
+    private static readonly Dictionary<string, string> OtherMap =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>注册一个液体的显示名 + 描述（id / id+"dsc"，对应游戏 other 表的结构）</summary>
+    public static void RegisterLiquid(string id, string name, string desc)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+        if (!string.IsNullOrEmpty(name)) OtherMap[id] = name;
+        if (!string.IsNullOrEmpty(desc)) OtherMap[id + "dsc"] = desc;
+    }
+
     // 原版已有翻译、但我们想改名的 key（改完由 GetString_Postfix 无条件覆盖）
     private static readonly Dictionary<string, string> Force = new Dictionary<string, string>
     {
@@ -99,5 +119,19 @@ public static class FishLocalization
                 __result = text;
         }
         catch { /* 本地化失败绝不影响游戏 */ }
+    }
+
+    // 液体：只覆盖我们注册过的 key（sfblood / sfblooddsc），其它一律原样
+    private static void GetOther_Postfix(object[] __args, ref string __result)
+    {
+        try
+        {
+            if (__args == null || __args.Length == 0) return;
+            var key = __args[0] as string;
+            if (string.IsNullOrEmpty(key)) return;
+            if (OtherMap.TryGetValue(key, out var text) && !string.IsNullOrEmpty(text))
+                __result = text;
+        }
+        catch { }
     }
 }

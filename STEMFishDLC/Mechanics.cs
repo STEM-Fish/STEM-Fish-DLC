@@ -135,8 +135,11 @@ public static class Mechanics
             var apply = AccessTools.Method(typeof(PlayerCamera), "ApplyWoundItem");
             if (apply != null)
             {
-                harmony.Patch(apply, postfix: new HarmonyMethod(
-                    typeof(Mechanics).GetMethod("ApplyWoundItem_Postfix", BindingFlags.NonPublic | BindingFlags.Static)));
+                harmony.Patch(apply,
+                    prefix: new HarmonyMethod(
+                        typeof(Mechanics).GetMethod("ApplyWoundItem_Prefix", BindingFlags.NonPublic | BindingFlags.Static)),
+                    postfix: new HarmonyMethod(
+                        typeof(Mechanics).GetMethod("ApplyWoundItem_Postfix", BindingFlags.NonPublic | BindingFlags.Static)));
                 n++;
             }
             else Plugin.Log.LogWarning("[STEMFishDLC] 找不到 PlayerCamera.ApplyWoundItem");
@@ -347,12 +350,37 @@ public static class Mechanics
     //  ApplyWoundItem(Item) 是"对选中肢体使用物品"的统一入口。
     //  我们只认三种血袋 id，其余（saline / ringersolution）完全不碰。
     // ==========================================================================
+    private static bool _ownBlood;      // 本次使用的袋子里是不是 SF-07 自己的血
+
+    private static void ApplyWoundItem_Prefix(Item __0)
+    {
+        _ownBlood = false;
+        try
+        {
+            if (__0 == null) return;
+            var wc = __0.GetComponent<WaterContainerItem>();
+            if (wc == null) return;
+
+            float own = wc.AmountOf(SfBlood.Id);
+            _ownBlood = own > 1f && own >= wc.CurrentTotal - 1f;
+        }
+        catch { }
+    }
+
     private static void ApplyWoundItem_Postfix(Item __0)
     {
         try
         {
             if (__0 == null) return;
             if (!IsBloodBag(__0.id)) return;
+
+            // ★ 袋子里装的是 SF-07 自己的血（抽血得来）→ 不排异，跳过惩罚。
+            //   必须在**注射前**判断（prefix 里记的），否则正好注空时读不到残留。
+            if (_ownBlood)
+            {
+                Plugin.Log.LogInfo($"[STEMFishDLC] 输血（{__0.id}）：袋内是 SF-07 自己的血，不触发排异");
+                return;
+            }
 
             var pc = PlayerCamera.main;
             var body = pc != null ? pc.body : null;

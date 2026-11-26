@@ -94,6 +94,8 @@ public class Plugin : BaseUnityPlugin
         Hearing.Init(this);         // 战术耳塞（抗听力损伤 + 闷声）
         Mechanics.Init(this);       // 游泳 / 杀同类惩罚 / 血袋副作用
         Toxin.Init(this);           // SF-07：可可碱 / 咖啡因不耐受（更严重的中毒）
+        SfBlood.Init(this);         // SF-07 抽血 → 自定义红色血液 sfblood
+        LoadGrace.Init(this);       // 读档后的无敌窗口（地图加载期间不被咬死）
         WeaponHud.Init(this);       // 右下角武器状态 HUD
         HealthPanel.Init(this);     // 健康面板：STEM-Fish 档案 + 天蓝配色
         HealthDoll.Init(this);      // 右上角人体图（按部位显示受伤）
@@ -150,6 +152,8 @@ public class Plugin : BaseUnityPlugin
 
         Safe(FishVoice.Update);
         Safe(Toxin.Tick);               // 可可碱不耐受：等 Liquids.Registry 建好后包 onDrink
+        Safe(SfBlood.Tick);             // 等 Liquids.Registry 就绪后注册 sfblood
+        Safe(LoadGrace.Tick);           // 读档无敌窗口：快照 / 恢复 / 计时
         Safe(DlcPanel.Update);
         Safe(HudButton.Update);         // 进世界后自动挂 HUD 按钮（失败会一直重试）
         Safe(WeaponHud.Update);         // 右下角武器状态
