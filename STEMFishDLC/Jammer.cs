@@ -222,7 +222,7 @@ public static class Jammer
 
     private static List<string> FallbackScript()
     {
-        if (Lang.IsEnglish)
+        if (!Lang.IsChinese)
         {
             return new List<string>
             {

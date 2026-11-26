@@ -476,7 +476,7 @@ public static class FishVoice
                 BuildDefaults();
                 return;
             }
-            var data = JsonConvert.DeserializeObject<VoiceFile>(File.ReadAllText(path));
+            var data = JsonConvert.DeserializeObject<VoiceFile>(Lang.Read("voice", path));
             if (data != null)
             {
                 _expand = data.expand ?? new Dictionary<string, List<string>>();
@@ -500,7 +500,7 @@ public static class FishVoice
     // 无 json 时的内建保底台词
     private static void BuildDefaults()
     {
-        if (Lang.IsEnglish)
+        if (!Lang.IsChinese)
         {
             _chatter["idle"] = new List<string> { "...Log: still here.", "It is too quiet down here." };
             _chatter["lowhp"] = new List<string> { "No... I can't stop here." };

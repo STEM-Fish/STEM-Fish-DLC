@@ -176,7 +176,7 @@ public static class CharacterSelect
 
         if (_sf07 == null)
         {
-            _sf07 = Lang.IsEnglish
+            _sf07 = !Lang.IsChinese
                 ? new CharInfo
                 {
                     name = "[SF-07] \"STEM-Fish\"",

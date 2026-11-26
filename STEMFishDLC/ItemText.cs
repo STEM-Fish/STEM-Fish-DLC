@@ -83,7 +83,7 @@ public static class ItemText
         {
             if (File.Exists(Path_))
             {
-                var d = JsonConvert.DeserializeObject<Dictionary<string, Entry>>(File.ReadAllText(Path_));
+                var d = JsonConvert.DeserializeObject<Dictionary<string, Entry>>(Lang.Read("items", Path_));
                 if (d != null)
                 {
                     _file.Clear();
@@ -110,7 +110,7 @@ public static class ItemText
         {
             if (File.Exists(Path_)) return;
             if (_builtin.Count == 0) return;
-            if (Lang.IsEnglish) return;          // 英文模式不导出中文内置模板
+            if (!Lang.IsChinese) return;         // 英文 / 俄文模式不导出中文内置模板
 
             Directory.CreateDirectory(Dir);
             var d = new Dictionary<string, Entry>();

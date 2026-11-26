@@ -78,7 +78,9 @@ public static class UiText
     {
         try
         {
-            var root = JObject.Parse(File.ReadAllText(path));
+            string json = Lang.Read("ui", path);
+            if (string.IsNullOrEmpty(json)) { Plugin.Log.LogWarning("[STEMFishDLC] 界面文案为空: " + path); return; }
+            var root = JObject.Parse(json);
             _data.Clear();
             int n = 0;
             foreach (var sec in root.Properties())

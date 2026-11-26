@@ -80,7 +80,7 @@
     "modmenu.write.hint": "Restart the game from Steam after writing",
     "modmenu.section.general": "GENERAL",
     "modmenu.language": "Text language",
-    "modmenu.language.desc": "Click to cycle: Follow game → 中文 → English (restart for full effect)",
+    "modmenu.language.desc": "Click to cycle: Follow game → 中文 → English → Русский (restart for full effect)",
     "modmenu.section.modules": "<b>MODULES</b>   <color=#5a6672>click to toggle</color>",
     "modmenu.section.hotkeys": "<b>HOTKEYS</b>   <color=#5a6672>available in-game</color>",
     "modmenu.section.debug": "<b>DEBUG</b>   <color=#5a6672>off by default; the keys below only work when enabled</color>",

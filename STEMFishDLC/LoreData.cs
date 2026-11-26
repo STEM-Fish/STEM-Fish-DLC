@@ -224,7 +224,7 @@ public static class LoreData
         {
             if (File.Exists(LorePath))
             {
-                var root = JsonConvert.DeserializeObject<FileRoot>(File.ReadAllText(LorePath));
+                var root = JsonConvert.DeserializeObject<FileRoot>(Lang.Read("lore", LorePath));
                 if (root != null && root.logs != null)
                 {
                     _entries.Clear();

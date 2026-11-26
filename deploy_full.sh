@@ -59,11 +59,11 @@ cp "$PAT" "$DST/patchers/"
 
 mkdir -p "$PLUGIN/textures"
 cp "$ROOT"/STEMFishDLC/textures/*.png "$PLUGIN/textures/"
-cp "$ROOT"/STEMFishDLC/items.zh-CN.json "$ROOT"/STEMFishDLC/items.en-US.json \
-   "$ROOT"/STEMFishDLC/voice.zh-CN.json "$ROOT"/STEMFishDLC/voice.en-US.json \
-   "$ROOT"/STEMFishDLC/lore.zh-CN.json "$ROOT"/STEMFishDLC/lore.en-US.json \
-   "$ROOT"/STEMFishDLC/ui.zh-CN.json "$ROOT"/STEMFishDLC/ui.en-US.json \
-   "$ROOT"/STEMFishDLC/chars.zh-CN.json "$ROOT"/STEMFishDLC/chars.en-US.json "$PLUGIN/"
+# 所有语种一起带过去（只认 xx-XX.json 命名，避免把「副本」之类的临时文件也复制进去）
+for f in "$ROOT"/STEMFishDLC/*.zh-CN.json "$ROOT"/STEMFishDLC/*.en-US.json \
+         "$ROOT"/STEMFishDLC/*.ru-RU.json; do
+  [ -f "$f" ] && cp "$f" "$PLUGIN/"
+done
 
 if [ -d "$ROOT/STEMFishDLC/lore_img" ]; then
   mkdir -p "$PLUGIN/lore_img"

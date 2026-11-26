@@ -42,7 +42,7 @@ public static class FishLocalization
             var info = Harmony.GetPatchInfo(target);
             _patched = true;
 
-            if (Lang.IsEnglish)
+            if (!Lang.IsChinese)
             {
                 Force["minilaserdrill"] = "Experimental Particle Cutter";
                 Force["minilaserdrilldsc"] = "A prototype that leaked out of the company lab: the laser drill's focusing head replaced with a particle-cutting array. Rock cut by it vaporizes outright; the price is that it is now genuinely heavy.";
