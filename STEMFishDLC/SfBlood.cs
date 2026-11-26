@@ -121,9 +121,9 @@ public static class SfBlood
         {
             FishLocalization.RegisterLiquid(Id,
                 L("SF-07 血液", "SF-07 Blood", "Кровь SF-07"),
-                L("从 SF-07 身上抽出的红色血液。这是他唯一不会排异的血——静脉注射可以安全恢复血容量。颜色像人血，但标记不同，人类 DNA 检测终端不会把它当成人类样本。",
-                  "Red blood drawn from SF-07. The only blood his body will not reject: injecting it safely restores blood volume. It looks like human blood, but the markers differ, so a human DNA terminal will not read it as a human sample.",
-                  "Красная кровь, взятая у SF-07. Единственная кровь, которую его тело не отторгает: внутривенное введение безопасно восстанавливает объём крови. На вид она как человеческая, но маркеры другие — терминал ДНК не примет её за человеческий образец."));
+                L("从 SF-07 身上抽出的红色血液。这是他唯一不会排异的血——静脉注射可以安全恢复血容量。颜色像人血，但抗原和 DNA 与人类不同。不要指望用它打开那些物资仓。",
+                  "Red blood drawn from SF-07. The only blood his body will not reject: injecting it safely restores blood volume. It looks like human blood, but its antigens and DNA are not human. Do not count on it to open any of those supply crates.",
+                  "Красная кровь, взятая у SF-07. Единственная кровь, которую его тело не отторгает: внутривенное введение безопасно восстанавливает объём крови. На вид она как человеческая, но антигены и ДНК у неё не человеческие. Не рассчитывай, что ею можно открыть те ящики снабжения."));
         }
         catch { }
     }
