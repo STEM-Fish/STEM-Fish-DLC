@@ -264,6 +264,8 @@
     "dlc.state.stillbleeding": "STILL BLEEDING",
     "dlc.state.overloaded": "OVERLOADED",
     "modmenu.language.saved": "Language set to {0} · restart the game for full effect",
-    "newrun.character": "CHARACTER"
+    "newrun.character": "CHARACTER",
+    "modmenu.module.doll.name": "Health doll on vanilla",
+    "modmenu.module.doll.desc": "Keep the health doll visible when you play a vanilla character"
   }
 }

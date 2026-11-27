@@ -127,6 +127,14 @@ public static class RunConfig
 
     public static Difficulty Current;
 
+    // 我们自己接管的 runSettings 键：ApplyPreset 之后不把旧值盖回来
+    // （这些键由下面的 Scale / Set 显式写入，跟着所选模式走）
+    private static readonly HashSet<string> OwnedKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "basetrapdensity", "encumbrancecap", "startingsupplies",
+        "ambientlight", "healingrate", "metabolismrate",
+        "unchipped", "endless",
+    };
     // ---- 可调 ----
     public static bool Enabled = true;
     public static float EncumbranceCap = 2.4f;     // 负重上限倍率（原版 1，硬上限 3）
@@ -173,7 +181,27 @@ public static class RunConfig
             if (pre.runSettings == null)
                 pre.runSettings = new Dictionary<string, object>();
 
+            // ★ ApplyPreset 第一件事就是 runSettings.Clear()，然后重铺预设。
+            //   玩家在原版开局界面手动调过的设置（最典型的是 traderchance = 商人刷新概率）
+            //   会因此被静默抹回预设值 —— Nexus 反馈「设成 100% 也不出商人」就是这个：
+            //   我们每次选模式都把它重置成 normal 的 33。
+            //   所以先抄一份旧字典，铺完预设再把**我们不接管**的键盖回去。
+            //   下面 Scale/Set 写的那 8 个键不恢复，否则上一局急速下坠的 healingrate=6
+            //   会漏到这一局的普通模式里。
+            Dictionary<string, object> carried = null;
+            try { carried = new Dictionary<string, object>(pre.runSettings); } catch { }
+
             pre.ApplyPreset(d.preset);          // 原版预设打底（含全部键 + 正确类型）
+
+            if (carried != null)
+            {
+                var owned = OwnedKeys;
+                foreach (var kv in carried)
+                {
+                    if (kv.Key == null || owned.Contains(kv.Key)) continue;
+                    pre.runSettings[kv.Key] = kv.Value;
+                }
+            }
 
             var s = pre.runSettings;
             Scale(s, "basetrapdensity", d.trapMul);
@@ -223,6 +251,19 @@ public static class RunConfig
                                $"陷阱×{d.trapMul:0.00} 摔落×{d.fallDamageMul:0.00} " +
                                $"{(d.infiniteMags ? "无限弹匣 " : "")}" +
                                $"{(d.ambientLight >= 0 ? $"环境光={d.ambientLight} " : "")}");
+
+            // 商人概率是原版键，我们从不当自己的设置改它 —— 打出来方便排查
+            // 「明明设了 100% 却没有商人」这类反馈
+            try
+            {
+                if (s.ContainsKey("traderchance"))
+                {
+                    object tc = s["traderchance"];
+                    Plugin.Log.LogInfo($"[STEMFishDLC] 商人刷新概率 traderchance={tc}%（原版设置，DLC 不覆盖）");
+                }
+            }
+            catch { }
+
             return true;
         }
         catch (Exception e)

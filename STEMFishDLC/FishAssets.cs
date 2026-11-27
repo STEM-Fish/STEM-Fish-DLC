@@ -83,9 +83,11 @@ public static class FishAssets
 
     // ==========================================================================
     //  按参照贴图的**世界尺寸**创建（美术像素密度不同也能对齐）
-    //  ppu = 参照PPU × (本图宽 / 参照图宽) → 两者在世界里的宽度一致
+    //  ppu = 参照PPU × (本图宽 / 参照图宽) / scale → 世界宽度 = 参照 × scale
+    //    scale = 1   → 和原版同尺寸
+    //    scale = 1.6 → 世界里放大 60%（MDRZ9 的 7.62 弹匣比 5.56 弹匣大一圈）
     // ==========================================================================
-    public static Sprite GetSpriteMatchSize(string id, Sprite reference)
+    public static Sprite GetSpriteMatchSize(string id, Sprite reference, float scale = 1f)
     {
         if (string.IsNullOrEmpty(id)) return null;
         var tex = LoadTexture(id);
@@ -102,8 +104,10 @@ public static class FishAssets
             if (r.width > 0f && r.height > 0f)
                 pivot = new Vector2(reference.pivot.x / r.width, reference.pivot.y / r.height);
         }
+        scale = Mathf.Clamp(scale <= 0f ? 1f : scale, 0.2f, 4f);
+        ppu /= scale;
 
-        string key = $"{id}|match|{ppu:0.###}|{pivot.x:0.####},{pivot.y:0.####}";
+        string key = $"{id}|match|{ppu:0.###}|{pivot.x:0.####},{pivot.y:0.####}|{scale:0.##}";
         if (_spriteCache.TryGetValue(key, out var cached)) return cached;
 
         try
@@ -111,7 +115,7 @@ public static class FishAssets
             var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), pivot, ppu, 0, SpriteMeshType.FullRect);
             sprite.name = id + "_match";
             _spriteCache[key] = sprite;
-            Plugin.Log.LogInfo($"[STEMFishDLC] 贴图 {id}.png ({tex.width}x{tex.height}) 匹配世界尺寸 → ppu={ppu:0.##}（参照 {reference?.name}）");
+            Plugin.Log.LogInfo($"[STEMFishDLC] 贴图 {id}.png ({tex.width}x{tex.height}) 匹配世界尺寸 ×{scale:0.##} → ppu={ppu:0.##}（参照 {reference?.name}）");
             return sprite;
         }
         catch (Exception e)

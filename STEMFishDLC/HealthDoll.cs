@@ -35,6 +35,21 @@ namespace STEMFishDLC;
 public static class HealthDoll
 {
     public static bool Enabled = true;
+    /// <summary>
+    /// 选原版角色（Experiment / Milky / Dune）时是否也显示这个人体图。
+    /// 作者本意是"原版也留着，当作体验增强"，但 Nexus 反馈说它会跟着原版角色一起出现、
+    /// 又不是所有人想要，所以做成开关（默认开，保留作者原本的效果）。
+    /// </summary>
+    public static bool ShowOnVanilla = true;
+
+    private static BepInEx.Configuration.ConfigEntry<bool> _vanillaEntry;
+
+    /// <summary>面板开关：改内存同时写回 cfg（BepInEx 会自动落盘），重启后保持</summary>
+    public static void SetShowOnVanilla(bool v)
+    {
+        ShowOnVanilla = v;
+        try { if (_vanillaEntry != null) _vanillaEntry.Value = v; } catch { }
+    }
     public static float Scale = 0.7f;
     public static float OffsetX = -26f;
     public static float OffsetY = -84f;      // 存档按钮 高44 + 上边距26 + 间隔14
@@ -151,6 +166,9 @@ public static class HealthDoll
         {
             Enabled = plugin.Config.Bind("HUD", "HealthDoll", true,
                 "右上角人体图（按部位显示受伤）").Value;
+            _vanillaEntry = plugin.Config.Bind("HUD", "HealthDollOnVanillaCharacter", true,
+                "选原版角色时也显示右上角人体图（关掉 = 只在 SF-07 局显示；原版角色恢复成完全没有这个面板）");
+            ShowOnVanilla = _vanillaEntry.Value;
             // ★ 键名换成 HealthDollScaleV2：v0.13.12 换了整套人偶美术，
             //   画布从 84×92 变成 140×230。旧键里存的 1.6 会把新图放到
             //   224×368（半个屏幕），所以干脆用新键，默认 0.7。
@@ -230,6 +248,15 @@ public static class HealthDoll
                 SetVisible(false);
                 return;
             }
+
+            // 原版角色：按开关决定要不要跟着显示
+            if (!ShowOnVanilla)
+            {
+                bool ours = true;
+                try { ours = CharacterSelect.Current == CharacterSelect.Sf07; } catch { }
+                if (!ours) { SetVisible(false); return; }
+            }
+
             SetVisible(true);
 
             // 有人出血时每帧刷新（闪烁要平滑），没人出血时 6.7Hz 就够

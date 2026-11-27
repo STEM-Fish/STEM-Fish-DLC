@@ -2,6 +2,26 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.23.4 — 2026-11-27
+
+- **修：原版角色也会看到右上角人体图**。以前 `HealthDoll.Tick` 完全不看角色，选 Experiment /
+  Milky / Dune 也照样显示。新增 `[HUD] HealthDollOnVanillaCharacter`，对应 MOD 管理 →
+  模块 →「原版角色显示人体图」；关掉后只在 SF-07 局出现。默认开，保留"原版体验也留着"的初衷
+- **修：开局模式把玩家的商人概率重置了**。原版 `PreRunScript.ApplyPreset` 第一件事是
+  `runSettings.Clear()` 再重铺预设，玩家在原版开局界面调过的 `traderchance`（normal 预设只有
+  33）会被抹掉 —— 这就是"设成 100% 也不出商人"。现在铺完预设会把**不属于 DLC 接管**的键
+  全部盖回去；`basetrapdensity / encumbrancecap / startingsupplies / ambientlight /
+  healingrate / metabolismrate / unchipped / endless` 这 8 个仍按所选模式写
+- **诊断**：给 `WorldGeneration.GenerateLifePods` 挂了只读 postfix，每层打印
+  `层 / 密度 / 掉落倍率 / 商人概率`。以后再遇到"某层没商人"，日志里直接能看出来是深度段没匹配、
+  密度算成 0，还是玩家设置被改
+- **MDRZ9 弹匣**：贴图 2 倍最近邻放大（18×25 → 36×50，保持原像素风），世界尺寸 ×1.55
+  —— 7.62 弹匣本来就该比 5.56 肥一圈，掉在地上也不再是一小撮黑点
+- **7.62×51 子弹**：不换贴图，只把染色从 `(1, 0.72, 0.52)` 提亮到 `(1.2, 0.88, 0.55)`，
+  暗层里能认出是铜色弹药
+- 构建：`UnityEngine.Modules` 从浮动 `2022.3.*` 写死成 `2022.3.62`（浮动版本每次构建都要
+  联网查最新版，断网时卡 100 秒后失败）
+
 ## 0.23.3 — 2026-11-26
 
 - **SF-07 血液的说明重写**：明确写出「颜色像人血，但抗原和 DNA 与人类不同」，

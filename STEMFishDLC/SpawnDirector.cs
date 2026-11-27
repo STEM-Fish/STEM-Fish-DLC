@@ -116,6 +116,7 @@ public static class SpawnDirector
             RebuildAllowed();
             PatchDistribute();
             PatchCaveTicks();
+            PatchStructures();
             Plugin.Log.LogInfo($"[STEMFishDLC] 刷怪模块: {(Enabled ? "开" : "关")} | 池={string.Join("/", _pool)}");
         }
         catch (Exception e)
@@ -429,6 +430,63 @@ public static class SpawnDirector
             RebuildAllowed();
             Plugin.Log.LogWarning($"[STEMFishDLC] 已把 {id} 移出投放池（连续失败 {n} 次），剩余: {string.Join("/", _pool)}");
         }
+    }
+
+    // ==========================================================================
+    //  ④ 结构生成诊断（只读，不改任何东西）
+    //  ---------------------------------------------------------------------------
+    //  Nexus 反馈「某些层完全没有商人和结构」。商人不是单独刷的，反汇编确认：
+    //    每一层 WorldGenerateStructures 按 biomeDepth 分段调用 GenerateLifePods(密度)
+    //      num = 区块面积 × 密度 × totalLootRarity
+    //      totalLootRarity = runSettings["baselootdensity"] × lootRarityMultiplier
+    //    每生成一个生命舱，再按 runSettings["traderchance"]% 决定放商人还是放箱子。
+    //  所以「既没商人也没舱」只可能是：这段深度没匹配到分支、密度算成 0、
+    //  或者预制体加载失败让协程中途抛异常。这里把前两项写进日志，
+    //  用户回传日志就能判断是哪一种。
+    // ==========================================================================
+    private static void PatchStructures()
+    {
+        try
+        {
+            var m = AccessTools.Method(typeof(WorldGeneration), "GenerateLifePods", new[] { typeof(float) });
+            if (m == null) { Plugin.Log.LogWarning("[STEMFishDLC] 找不到 GenerateLifePods，结构诊断不可用"); return; }
+            var post = typeof(SpawnDirector).GetMethod("LifePods_Postfix", BindingFlags.NonPublic | BindingFlags.Static);
+            new Harmony("com.stemfish.dlc.structdiag").Patch(m, postfix: new HarmonyMethod(post));
+            Plugin.Log.LogInfo("[STEMFishDLC] 结构生成诊断 hook 完成");
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] 结构诊断 hook 失败: {e.Message}");
+        }
+    }
+
+    private static void LifePods_Postfix(float __0)
+    {
+        try
+        {
+            var w = WorldGeneration.world;
+            int depth = w != null ? w.biomeDepth : -999;
+
+            float loot = -1f;
+            try
+            {
+                var getter = AccessTools.Method(typeof(WorldGeneration), "get_totalLootRarity");
+                if (getter != null && w != null) loot = Convert.ToSingle(getter.Invoke(w, null));
+            }
+            catch { }
+
+            float trader = -1f;
+            try
+            {
+                var rs = WorldGeneration.runSettings;
+                if (rs != null && rs.ContainsKey("traderchance")) trader = Convert.ToSingle(rs["traderchance"]);
+            }
+            catch { }
+
+            Plugin.Log.LogInfo($"[STEMFishDLC] 生命舱生成 | 层={depth} 密度={__0:0.0000} " +
+                               $"掉落倍率={loot:0.###} 商人概率={trader:0.#}%");
+        }
+        catch { }
     }
 
     // ==========================================================================

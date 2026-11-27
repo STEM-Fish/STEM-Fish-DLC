@@ -103,6 +103,7 @@ public static class ItemRegistry
         public float darkenAmount = 0.5f;     // 压暗系数（0=全黑，1=不变）
         public bool indestructible;           // 不因耐久归零而消失（destroyAtZeroCondition=false）
         public string spriteOverride = "";    // 用 textures/<id>.png 换掉原版贴图
+        public float groundScale = 1f;        // 贴图世界尺寸倍率（1 = 和参照物品一样大；弹匣这种要比原版大一圈）
     }
 
     private static readonly List<FishItem> Items = new List<FishItem>
@@ -185,6 +186,9 @@ public static class ItemRegistry
             ammoTypeValue = 3,
             ammoMaxRounds = 20,
             spriteOverride = "mdrz9_mag",
+            // 7.62 弹匣比 5.56 弹匣肥一圈：世界尺寸放大 55%。
+            // 以前严格匹配 riflemagazine 的尺寸，掉在地上又小又暗（Nexus 反馈）。
+            groundScale = 1.55f,
         },
         // 7.62×51 散弹（借 5.56 的贴图，染色区分）
         new FishItem
@@ -200,7 +204,10 @@ public static class ItemRegistry
             isAmmo = true,
             ammoIsMagazine = false,
             ammoTypeValue = 3,
-            tint = new Color(1f, 0.72f, 0.52f),   // 偏铜红，和 5.56 的黄铜色区分
+            // 不换贴图：仍然借 5.56 的图，只把染色调鲜艳。
+            // 原来的 (1, 0.72, 0.52) 偏灰偏暗，掉在地上和 5.56 分不出来（Nexus 反馈）；
+            // 现在整体提亮 + 加饱和度，偏铜橙，暗层里也能认出来。
+            tint = new Color(1.2f, 0.88f, 0.55f),
         },
         // 黑色双肩包：模板 bigpack（背在 back 槽），容量更大、不损坏
         //  贴图不另存 PNG：创建时把 bigpack 的图去色 + 压暗现算一张（SpriteTint）
@@ -860,7 +867,7 @@ public static class ItemRegistry
                 if (def.tint != Color.white) sr.color = def.tint;
                 if (!string.IsNullOrEmpty(def.spriteOverride))
                 {
-                    var s = FishAssets.GetSpriteMatchSize(def.spriteOverride, sr.sprite);
+                    var s = FishAssets.GetSpriteMatchSize(def.spriteOverride, sr.sprite, def.groundScale);
                     if (s != null)
                     {
                         sr.sprite = s;

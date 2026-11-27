@@ -175,6 +175,14 @@ public static class ModMenu
             desc = M("module.cursor.desc", "内置准星替换", "Replace the crosshair"),
             get = () => CursorFeature.Enabled, set = v => CursorFeature.Toggle(v),
         });
+        _modules.Add(new Module
+        {
+            key = "HealthDollVanilla",
+            name = M("module.doll.name", "原版角色显示人体图", "Health doll on vanilla"),
+            desc = M("module.doll.desc", "选原版角色时也显示右上角人体图（关掉 = 只在 SF-07 局显示）",
+                     "Keep the health doll visible when you play a vanilla character"),
+            get = () => HealthDoll.ShowOnVanilla, set = v => HealthDoll.SetShowOnVanilla(v),
+        });
     }
 
     // ==========================================================================
