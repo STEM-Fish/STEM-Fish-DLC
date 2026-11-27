@@ -2,6 +2,25 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.24.0 — 2026-11-27
+
+- **新：SF-07 的尾巴会飘了**。原版 `TailScript.Update()` 只做一件事——把**整根**尾巴绕根部
+  转到移动方向（`SignedAngle` + `LerpAngle`，clamp ±80°），所以尾巴是一根硬棍子，跑起来
+  只是整根甩，尾梢永远追不上身体。现在：
+  - 把尾巴 sprite 沿长轴切成 N 段（默认 9 段），每段一个 SpriteRenderer
+  - 一条**世界坐标的 Verlet 链**当骨架：根点钉在尾巴根部，其余点受重力 + 双正弦风，
+    每次迭代 3 遍段长约束
+  - 尾梢因此会滞后、过冲、回弹；转身时整根先甩过去、末段再追上来
+  - 原版 `TailScript` **不关**，两者叠加：整根甩 + 尾梢拖
+- 分段用的是 SpriteRenderer 而不是自建 mesh：直接继承原尾巴的 `sharedMaterial` /
+  `sortingLayer` / `sortingOrder` / `color`，URP 2D 光照和原版完全一致，暗层里不会亮成一条
+- `Body.SwitchDir` 用 `localScale.x = -1` 表示朝向，镜像下的角度单独处理
+  （局部角取反 + `InverseTransformPoint` 定位）
+- 配置：`[Cosmetic] TailFlow`（默认开）、`TailFlowSegments`（3~16，默认 9）、
+  `TailFlowAmp`（飘动幅度，默认 1）、`TailFlowDamping`（阻尼，默认 0.86）
+- 日志会打 `尾巴切片: experimentTail 54px → 9 段 | ppu=8 世界长=…u 段长=…u 缩放=… 镜像=…`，
+  觉得尾巴太短/太长/方向反了，把这一行发出来就能调
+
 ## 0.23.4 — 2026-11-27
 
 - **修：原版角色也会看到右上角人体图**。以前 `HealthDoll.Tick` 完全不看角色，选 Experiment /

@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.23.4")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.24.0")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.23.4 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.24.0 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -101,6 +101,7 @@ public class Plugin : BaseUnityPlugin
         HealthDoll.Init(this);      // 右上角人体图（按部位显示受伤）
         GunFx.Init(this);           // 射击打击感（枪口闪光 + 命中粒子）
         FishSkin.Init(this);        // 内置皮肤替换（不依赖 SkinSyncMod，隔离模式下也保留外观）
+        TailFlow.Init(this);        // 尾巴分段飘动（在皮肤替换之后）
         LoadingArt.Init(this);      // 加载/选人界面的角色立绘替换
         MenuArt.Init(this);         // 主菜单立绘：悬停轮廓生成 + 文字/点击框适配
         EntityWatchdog.Init(this);  // 诊断：血量负了却没死的实体
@@ -168,6 +169,7 @@ public class Plugin : BaseUnityPlugin
         Safe(PlayerSkills.Tick);        // 初始技能：等玩家出生后应用
         Safe(BodyProportion.Tick);      // 体型：档案身高 / 血迹缩放
         Safe(FishSkin.Tick);            // 内置皮肤：每帧校正角色贴图
+        Safe(TailFlow.Tick);            // 尾巴：分段飘动（Verlet 链）
         Safe(LoadingArt.Tick);          // 加载界面立绘：每两帧校正一次
         Safe(MenuArt.Tick);             // 主菜单立绘：生成轮廓 / 平移文字
         Safe(EntityWatchdog.Tick);      // 诊断：卡住的实体
