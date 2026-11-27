@@ -32,6 +32,8 @@ public static class TailFlow
     public static float Damping = 0.86f;
 
     private static TailRig _rig;
+    private static bool _noTailWarned;
+    private static bool _noSrWarned;
 
     public static void Init(Plugin plugin)
     {
@@ -68,11 +70,27 @@ public static class TailFlow
             if (_rig == null)
             {
                 var tail = body.GetComponentInChildren<TailScript>(true);
-                if (tail == null) return;
+                if (tail == null)
+                {
+                    if (!_noTailWarned)
+                    {
+                        _noTailWarned = true;
+                        Plugin.Log.LogInfo("[STEMFishDLC] Body 下没找到 TailScript —— 这个角色没有尾巴，飘动不生效");
+                    }
+                    return;
+                }
 
                 var sr = tail.GetComponent<SpriteRenderer>();
                 if (sr == null) sr = tail.GetComponentInChildren<SpriteRenderer>(true);
-                if (sr == null || sr.sprite == null) return;
+                if (sr == null || sr.sprite == null)
+                {
+                    if (!_noSrWarned)
+                    {
+                        _noSrWarned = true;
+                        Plugin.Log.LogWarning("[STEMFishDLC] TailScript 上没找到 SpriteRenderer，尾巴飘动不生效");
+                    }
+                    return;
+                }
 
                 // 复用已有组件：EngineTick 一帧可能 Pump 多次，直接 AddComponent 会堆一摞
                 _rig = tail.gameObject.GetComponent<TailRig>();
