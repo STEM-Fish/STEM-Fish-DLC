@@ -177,6 +177,14 @@ public static class ModMenu
         });
         _modules.Add(new Module
         {
+            key = "TailFlow",
+            name = M("module.tail.name", "尾巴飘动", "Flowing tail"),
+            desc = M("module.tail.desc", "SF-07 的尾巴网格飘动（关掉 = 原版整根旋转）",
+                     "Soft tail physics for SF-07 (off = vanilla rigid swing)"),
+            get = () => TailFlow.Enabled, set = v => TailFlow.SetEnabled(v),
+        });
+        _modules.Add(new Module
+        {
             key = "HealthDollVanilla",
             name = M("module.doll.name", "原版角色显示人体图", "Health doll on vanilla"),
             desc = M("module.doll.desc", "选原版角色时也显示右上角人体图（关掉 = 只在 SF-07 局显示）",

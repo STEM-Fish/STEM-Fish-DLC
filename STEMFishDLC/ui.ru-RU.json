@@ -266,6 +266,8 @@
     "modmenu.language.saved": "Язык изменён на {0} · перезапустите игру, чтобы применилось полностью",
     "newrun.character": "ПЕРСОНАЖ",
     "modmenu.module.doll.name": "Кукла здоровья на ваниле",
-    "modmenu.module.doll.desc": "Показывать куклу здоровья и на ванильных персонажах"
+    "modmenu.module.doll.desc": "Показывать куклу здоровья и на ванильных персонажах",
+    "modmenu.module.tail.name": "Колышущийся хвост",
+    "modmenu.module.tail.desc": "Мягкая физика хвоста SF-07 (выкл. = ванильное вращение целиком)"
   }
 }

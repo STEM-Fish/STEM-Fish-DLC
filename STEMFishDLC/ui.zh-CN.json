@@ -266,6 +266,8 @@
     "modmenu.language.saved": "语言已改为 {0} · 重启游戏后全部生效",
     "newrun.character": "角色",
     "modmenu.module.doll.name": "原版角色显示人体图",
-    "modmenu.module.doll.desc": "选原版角色时也显示右上角人体图（关掉 = 只在 SF-07 局显示）"
+    "modmenu.module.doll.desc": "选原版角色时也显示右上角人体图（关掉 = 只在 SF-07 局显示）",
+    "modmenu.module.tail.name": "尾巴飘动",
+    "modmenu.module.tail.desc": "SF-07 的尾巴网格飘动（关掉 = 原版整根旋转）"
   }
 }

@@ -266,6 +266,8 @@
     "modmenu.language.saved": "Language set to {0} · restart the game for full effect",
     "newrun.character": "CHARACTER",
     "modmenu.module.doll.name": "Health doll on vanilla",
-    "modmenu.module.doll.desc": "Keep the health doll visible when you play a vanilla character"
+    "modmenu.module.doll.desc": "Keep the health doll visible when you play a vanilla character",
+    "modmenu.module.tail.name": "Flowing tail",
+    "modmenu.module.tail.desc": "Soft tail physics for SF-07 (off = vanilla rigid swing)"
   }
 }

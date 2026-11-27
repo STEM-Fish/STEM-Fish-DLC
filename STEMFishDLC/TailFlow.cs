@@ -60,6 +60,7 @@ public static class TailFlow
     public static float MaxStep = 0.40f;
     public static bool FrontGuard = true;
 
+    private static BepInEx.Configuration.ConfigEntry<bool> _enabledEntry;
     private static TailRig _rig;
     private static bool _noTailWarned;
     private static bool _noSrWarned;
@@ -68,8 +69,9 @@ public static class TailFlow
     {
         try
         {
-            Enabled = plugin.Config.Bind("Cosmetic", "TailFlow", true,
-                "SF-07 的尾巴网格飘动（关掉 = 只有原版整根旋转）").Value;
+            _enabledEntry = plugin.Config.Bind("Cosmetic", "TailFlow", true,
+                "SF-07 的尾巴网格飘动（关掉 = 只有原版整根旋转）");
+            Enabled = _enabledEntry.Value;
             Segments = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSegments", 18,
                 "尾巴分几段（越多越柔顺；12~24 平滑，太多会吃性能）").Value, 4, 32);
             Width = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowWidth", 1.7f,
@@ -98,6 +100,14 @@ public static class TailFlow
                 "防止尾巴甩到身体前面（原版开）").Value;
         }
         catch { }
+    }
+
+    /// <summary>面板开关：改内存同时写回 cfg（BepInEx 自动落盘），重启后保持</summary>
+    public static void SetEnabled(bool v)
+    {
+        Enabled = v;
+        try { if (_enabledEntry != null) _enabledEntry.Value = v; } catch { }
+        if (!v) Kill();
     }
 
     public static void Tick()
@@ -182,6 +192,12 @@ public class TailRig : MonoBehaviour
     private Vector2[] _smoothPos;
     private float[] _segHalf;
     private float[] _segCenter;
+
+    // 细分后的绘制列（物理链只有 n 个点，绘制是 cols 个）
+    private Vector2[] _colPos;
+    private float[] _colHalf;
+    private float[] _colCenter;
+    private const int SubDiv = 3;
 
     private Vector3[] _verts;
     private Vector2[] _uvs;
@@ -323,10 +339,6 @@ public class TailRig : MonoBehaviour
     // ======================================================================
     private void Rebuild(Sprite sp, int seg)
     {
-        var rr = sp.rect;
-        _cachedKey = sp.name + "|" + (int)rr.x + "," + (int)rr.y + "," +
-                     (int)rr.width + "x" + (int)rr.height + "|" + seg;
-
         var tex = sp.texture;
         if (tex == null) return;
 
@@ -341,17 +353,44 @@ public class TailRig : MonoBehaviour
         float scale = Mathf.Abs(transform.lossyScale.x);
         if (scale < 0.0001f) scale = 1f;
 
+        // ---- 先量有效长度，再决定分几段 ----
+        // ★ 段长太短时 Verlet 在极小尺度上不收敛：一个子步的位移能跨好几段，
+        //   约束迭代拉不回来，段长忽长忽短 —— 视觉上就是"一顿一顿 + 一节一节"。
+        //   所以按世界长度反推段数，保证每段至少 MinSegLen。
+        float axisLenLocal = MeasureAxisPixels(tex, x0, y0, w, h) / ppu;
+        float worldLen = axisLenLocal * scale;
+
+        const float MinSegLen = 0.06f;
+        int want = seg;
+        if (worldLen > 0.0001f && worldLen / Mathf.Max(1, want) < MinSegLen)
+            want = Mathf.Clamp(Mathf.FloorToInt(worldLen / MinSegLen), 4, seg);
+        seg = Mathf.Max(4, want);
+
+        var rr = sp.rect;
+        _cachedKey = sp.name + "|" + (int)rr.x + "," + (int)rr.y + "," +
+                     (int)rr.width + "x" + (int)rr.height + "|" + seg;
+
         int n = seg + 1;
-        _verts = new Vector3[n * 2];
-        _uvs = new Vector2[n * 2];
-        _tris = new int[seg * 6];
+
+        // ★ 物理链和绘制分开：
+        //   骨链只留 seg 段（段长够大，Verlet 才稳定），
+        //   绘制时每段再插 SubDiv 个点（Catmull-Rom），视觉上是 3 倍密度的平滑曲线。
+        //   之前段数一多物理就抖、一少就一折一折，就是因为这两件事用了同一套点。
+        int cols = seg * SubDiv + 1;
+
+        _verts = new Vector3[cols * 2];
+        _uvs = new Vector2[cols * 2];
+        _tris = new int[(cols - 1) * 6];
         _bonePos = new Vector2[n];
         _bonePrev = new Vector2[n];
         _smoothPos = new Vector2[n];
         _segHalf = new float[n];
         _segCenter = new float[n];
+        _colPos = new Vector2[cols];
+        _colHalf = new float[cols];
+        _colCenter = new float[cols];
 
-        for (int i = 0; i < seg; i++)
+        for (int i = 0; i < cols - 1; i++)
         {
             int v0 = i * 2, v1 = i * 2 + 1, v2 = (i + 1) * 2, v3 = (i + 1) * 2 + 1;
             int t = i * 6;
@@ -367,17 +406,14 @@ public class TailRig : MonoBehaviour
         BuildProfileFromPixels(sp, tex, x0, y0, w, h, ppu, n, scale, ref firstCol, ref lastCol);
         int axisLenPx = Mathf.Max(1, lastCol - firstCol + 1);
 
-        // ★ 段长 = 总长 ÷ 段数。这里以前漏了除法，直接把整条尾巴的长度
-        //   当成了一段，链上每一段都按整条长度排开 → 总长变成 段数×尾长（67u），
-        //   看起来就是一条横穿地图的白线。
         float localLen = axisLenPx / ppu;
         _segLen = localLen / seg * scale;
 
         // ---- UV：沿长轴线性，v 用贴图内的实际上下边界 ----
         float texW = tex.width, texH = tex.height;
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < cols; i++)
         {
-            float u = (x0 + firstCol + (axisLenPx - 1) * (i / (float)(n - 1))) / texW;
+            float u = (x0 + firstCol + (axisLenPx - 1) * (i / (float)(cols - 1))) / texW;
             u = Mathf.Clamp01(u);
             _uvs[i * 2] = new Vector2(u, y0 / texH);
             _uvs[i * 2 + 1] = new Vector2(u, (y0 + h) / texH);
@@ -388,7 +424,32 @@ public class TailRig : MonoBehaviour
 
         Plugin.Log.LogInfo($"[STEMFishDLC] 尾巴网格重建: {sp.name} {w}x{h}px → {seg} 段 | " +
                            $"有效长 {axisLenPx}px ppu={ppu:0.##} 世界总长={localLen * scale:0.##}u " +
-                           $"段长={_segLen:0.###}u 中段宽≈{_segHalf[seg / 2] * 2f:0.##}u 缩放={scale:0.##}");
+                           $"段长={_segLen:0.###}u 中段宽≈{_segHalf[seg / 2] * 2f:0.##}u " +
+                           $"宽度×{TailFlow.Width:0.##} 细分×{SubDiv}(共{cols}列) 缩放={scale:0.##} " +
+                           $"位移上限={Mathf.Min(TailFlow.MaxStep, _segLen * 0.9f):0.###}u/子步");
+    }
+
+    /// <summary>只量"有内容"的列数（不采样轮廓），用来决定分几段</summary>
+    private static int MeasureAxisPixels(Texture2D tex, int x0, int y0, int w, int h)
+    {
+        Color32[] px;
+        try { px = tex.GetPixels32(); } catch { return w; }
+
+        int tw = tex.width;
+        int first = -1, last = -1;
+        for (int x = 0; x < w; x++)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                int idx = (y0 + y) * tw + (x0 + x);
+                if (idx < 0 || idx >= px.Length || px[idx].a <= 8) continue;
+                if (first < 0) first = x;
+                last = x;
+                break;
+            }
+        }
+        if (first < 0) return w;
+        return Mathf.Max(1, last - first + 1);
     }
 
     /// <summary>
@@ -464,17 +525,32 @@ public class TailRig : MonoBehaviour
         // ★ 轮廓平滑：像素扫描出来的宽度是逐列跳变的（54px 的图每 1.5px 采一次），
         //   直接拿去生成网格，边缘会有明显的"台阶"，看起来就是一节一节。
         //   两遍 3 点平均就能把台阶抹平，又不会把尾巴的粗细变化吃掉。
-        var tmpH = new float[n];
-        var tmpC = new float[n];
+        // ★ 在"上下边界"空间平滑，再还原 center/half。
+        //   直接分别平均 half 和 center 会让上下边界各自漂移，宽度被悄悄削窄
+        //   （这也是尾巴看起来比原图细的一个来源）。
+        var lo = new float[n];
+        var hi = new float[n];
+        var tlo = new float[n];
+        var thi = new float[n];
+        for (int i = 0; i < n; i++)
+        {
+            lo[i] = _segCenter[i] - _segHalf[i];
+            hi[i] = _segCenter[i] + _segHalf[i];
+        }
         for (int pass = 0; pass < 2; pass++)
         {
-            Array.Copy(_segHalf, tmpH, n);
-            Array.Copy(_segCenter, tmpC, n);
+            Array.Copy(lo, tlo, n);
+            Array.Copy(hi, thi, n);
             for (int i = 1; i < n - 1; i++)
             {
-                _segHalf[i] = (tmpH[i - 1] + tmpH[i] + tmpH[i + 1]) / 3f;
-                _segCenter[i] = (tmpC[i - 1] + tmpC[i] + tmpC[i + 1]) / 3f;
+                lo[i] = (tlo[i - 1] + tlo[i] + tlo[i + 1]) / 3f;
+                hi[i] = (thi[i - 1] + thi[i] + thi[i + 1]) / 3f;
             }
+        }
+        for (int i = 0; i < n; i++)
+        {
+            _segCenter[i] = (lo[i] + hi[i]) * 0.5f;
+            _segHalf[i] = Mathf.Max(0.0005f, (hi[i] - lo[i]) * 0.5f);
         }
     }
 
@@ -510,6 +586,15 @@ public class TailRig : MonoBehaviour
     // ======================================================================
     //  LateUpdate：Verlet + 弯曲限制 + 段长约束 + 顶点生成
     // ======================================================================
+    private static Vector2 CatmullRom(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3, float t)
+    {
+        float t2 = t * t, t3 = t2 * t;
+        return 0.5f * ((2f * p1) +
+                       (-p0 + p2) * t +
+                       (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
+                       (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+    }
+
     private void LateUpdate()
     {
         if (_sr == null || _sr.sprite == null) return;
@@ -544,7 +629,13 @@ public class TailRig : MonoBehaviour
         float keep = 1f - damp;
 
         float maxBend = Mathf.Max(0f, TailFlow.MaxBendDeg) * Mathf.Deg2Rad;
-        float maxStep = Mathf.Max(0.02f, TailFlow.MaxStep);
+        // ★ 位移上限必须小于段长。参考实现的 0.15 是对着原版那截小尾巴调的，
+        //   换成世界单位后如果段长只有 0.03u，0.15 就等于"一个子步能跨五段"，
+        //   约束再怎么迭代也拉不回来 → 段长忽长忽短、看起来一顿一顿还断节。
+        //   0.9 段长是个平衡点：既不会一步跨过一整段（约束追不上），
+        //   又能保证每帧的位移预算（segLen × 0.9 × 子步数）跟得上角色速度。
+        float maxStep = Mathf.Min(TailFlow.MaxStep, _segLen * 0.9f);
+        maxStep = Mathf.Max(maxStep, 0.002f);
         float smooth = Mathf.Clamp(TailFlow.Smoothness, 0f, 0.99f);
         float anchorFollow = Mathf.Clamp01(TailFlow.AnchorFollow);
         float stiffness = Mathf.Clamp01(TailFlow.Stiffness);
@@ -648,33 +739,52 @@ public class TailRig : MonoBehaviour
         for (int i = 0; i < count; i++)
             _smoothPos[i] = Vector2.Lerp(_bonePos[i], _smoothPos[i], smooth);
 
+        // ---- 细分：骨链 8~18 个点 → 绘制 3 倍密度 ----
+        if (_colPos == null || _colPos.Length < 2) return;
+        int cols = _colPos.Length;
+        int segN = count - 1;
+
+        for (int j = 0; j < cols; j++)
+        {
+            float u = j / (float)(cols - 1) * segN;
+            int i0 = Mathf.Clamp(Mathf.FloorToInt(u), 0, segN);
+            int i1 = Mathf.Min(i0 + 1, segN);
+            float t = u - i0;
+
+            Vector2 p0 = _smoothPos[Mathf.Max(0, i0 - 1)];
+            Vector2 p1 = _smoothPos[i0];
+            Vector2 p2 = _smoothPos[i1];
+            Vector2 p3 = _smoothPos[Mathf.Min(segN, i1 + 1)];
+
+            _colPos[j] = CatmullRom(p0, p1, p2, p3, t);
+            _colHalf[j] = Mathf.Lerp(_segHalf[i0], _segHalf[i1], t);
+            _colCenter[j] = Mathf.Lerp(_segCenter[i0], _segCenter[i1], t);
+        }
+
         // ---- 顶点 ----
         float sideSign = _dir.y >= 0f ? 1f : -1f;
         var meshTr = _meshGo.transform;
         float z = transform.position.z;
+        float width = TailFlow.Width;
 
-        for (int i = 0; i < count; i++)
+        for (int j = 0; j < cols; j++)
         {
             Vector2 tangent;
-            if (i == 0) tangent = _smoothPos[1] - _smoothPos[0];
-            else if (i == count - 1) tangent = _smoothPos[count - 1] - _smoothPos[count - 2];
-            else
-            {
-                Vector2 a = (_smoothPos[i] - _smoothPos[i - 1]).normalized;
-                Vector2 b = (_smoothPos[i + 1] - _smoothPos[i]).normalized;
-                tangent = a + b;
-            }
-            if (tangent.sqrMagnitude < 1e-6f) tangent = _dir;
+            if (j == 0) tangent = _colPos[1] - _colPos[0];
+            else if (j == cols - 1) tangent = _colPos[cols - 1] - _colPos[cols - 2];
+            else tangent = (_colPos[j] - _colPos[j - 1]) + (_colPos[j + 1] - _colPos[j]);
+
+            if (tangent.sqrMagnitude < 1e-8f) tangent = _dir;
             tangent.Normalize();
 
             Vector2 side = new Vector2(-tangent.y, tangent.x) * sideSign;
-            float halfW = _segHalf[i] * TailFlow.Width;      // 贴图只有 5~10px 高，乘个倍率才饱满
-            Vector2 mid = _smoothPos[i] + side * _segCenter[i];
+            float halfW = _colHalf[j] * width;
+            Vector2 mid = _colPos[j] + side * _colCenter[j];
             Vector2 lo = mid - side * halfW;
             Vector2 hi = mid + side * halfW;
 
-            _verts[i * 2] = meshTr.InverseTransformPoint(new Vector3(lo.x, lo.y, z));
-            _verts[i * 2 + 1] = meshTr.InverseTransformPoint(new Vector3(hi.x, hi.y, z));
+            _verts[j * 2] = meshTr.InverseTransformPoint(new Vector3(lo.x, lo.y, z));
+            _verts[j * 2 + 1] = meshTr.InverseTransformPoint(new Vector3(hi.x, hi.y, z));
         }
 
         _mesh.Clear();
