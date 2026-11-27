@@ -2,24 +2,39 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
-## 0.24.0 — 2026-11-27
+## 0.24.1 — 2026-11-27
 
-- **新：SF-07 的尾巴会飘了**。原版 `TailScript.Update()` 只做一件事——把**整根**尾巴绕根部
-  转到移动方向（`SignedAngle` + `LerpAngle`，clamp ±80°），所以尾巴是一根硬棍子，跑起来
-  只是整根甩，尾梢永远追不上身体。现在：
-  - 把尾巴 sprite 沿长轴切成 N 段（默认 9 段），每段一个 SpriteRenderer
-  - 一条**世界坐标的 Verlet 链**当骨架：根点钉在尾巴根部，其余点受重力 + 双正弦风，
-    每次迭代 3 遍段长约束
-  - 尾梢因此会滞后、过冲、回弹；转身时整根先甩过去、末段再追上来
-  - 原版 `TailScript` **不关**，两者叠加：整根甩 + 尾梢拖
-- 分段用的是 SpriteRenderer 而不是自建 mesh：直接继承原尾巴的 `sharedMaterial` /
-  `sortingLayer` / `sortingOrder` / `color`，URP 2D 光照和原版完全一致，暗层里不会亮成一条
-- `Body.SwitchDir` 用 `localScale.x = -1` 表示朝向，镜像下的角度单独处理
-  （局部角取反 + `InverseTransformPoint` 定位）
-- 配置：`[Cosmetic] TailFlow`（默认开）、`TailFlowSegments`（3~16，默认 9）、
-  `TailFlowAmp`（飘动幅度，默认 1）、`TailFlowDamping`（阻尼，默认 0.86）
-- 日志会打 `尾巴切片: experimentTail 54px → 9 段 | ppu=8 世界长=…u 段长=…u 缩放=… 镜像=…`，
-  觉得尾巴太短/太长/方向反了，把这一行发出来就能调
+- **尾巴飘动改用网格变形（照搬 SkinSyncMod 的 `TailFlowDeform`）**。
+  0.24.0 的分段 SpriteRenderer 方案实测错位、断成一节一节 —— 根点在 `Body.SwitchDir`
+  的镜像下算错了，而且每段是刚性矩形，弯曲时必然出 V 形缝。现在整条换成网格：
+  - mesh 挂在 **Body 根节点**下，localPosition / localRotation 全零、scale 1；
+    顶点每帧用世界坐标算完再 `InverseTransformPoint` 回来，不受父级旋转和镜像干扰
+  - 顶点是 (段数+1)×2 的一条四边形带，每段 2 个三角形，整条连续、没有接缝
+  - **宽度来自像素扫描**：`GetPixels32()` 沿长轴逐列求不透明像素的 minY/maxY，
+    存成每列的 `_segCenter` / `_segHalf`（像素 ÷ ppu）—— 尾巴从粗到细的轮廓是真的
+  - 骨架是世界坐标 Verlet：根点 = 尾巴 pivot（尾部根部），第一个骨点用 AnchorFollow
+    软跟随"根点 + 朝后方向 × 段长"，其余点吃重力 + 正弦风 + 速度阻尼，子步积分
+  - 约束两轮：先**弯曲角限制**（相邻段夹角超 MaxBendDeg 就转回去，防止对折），
+    再**段长约束**（把后一个点拉回段长，防止拉长）
+  - 顶点前对骨链做一次 Lerp 平滑；切线取相邻两段的角平分线
+- **光照**：从 `Body.limbs` 里找一个肢体，复制它的 `sharedMaterial`（URP 2D Sprite-Lit），
+  再用 `ResetTransientLimbUniforms()` 把 8 个状态属性清零 ——
+  `_BloodOverlay / _SkinDamage / _MuscleDamage / _InfectionPercent / _SnowAmount /
+  _Dirtyness / _Wetness / _Pain`。不清零尾巴会继承手臂的血污和脏污，颜色会乱。
+  找不到肢体时退回 `Shader.Find("Sprites/Default")`
+- 每帧同步 `_mat.color = sr.color`、`sortingLayerID` / `sortingOrder`，然后把原
+  SpriteRenderer 关掉；原版 `TailScript` 保留（只转已经隐藏的贴图，和网格不冲突）
+- 配置：`[Cosmetic] TailFlow` / `TailFlowSegments`（10）/ `TailFlowAmp`（0.35）/
+  `TailFlowFreq`（1.6）/ `TailFlowGravity`（6）/ `TailFlowDamping`（0.35）/
+  `TailFlowSmooth`（0.5）/ `TailFlowMaxBend`（26°）
+- 日志：`尾巴网格重建: experimentTail 54x22px → 10 段 | 有效长 …px ppu=8 世界段长=…u 缩放=…`
+  若出现「尾巴贴图不可读，退回矩形带」，说明游戏图集关闭了 Read/Write，
+  尾巴会没有粗细变化（位置仍然正确）
+
+## 0.24.0 — 2026-11-27（方案已废弃）
+
+- 尾巴飘动的第一版：沿长轴切 9 段 SpriteRenderer + Verlet 链。
+  **实测错位且断节，0.24.1 已整体替换为网格方案**，这里只留个记录
 
 ## 0.23.4 — 2026-11-27
 

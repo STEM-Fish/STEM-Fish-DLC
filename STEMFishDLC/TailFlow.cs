@@ -4,32 +4,48 @@ using UnityEngine;
 namespace STEMFishDLC;
 
 // ============================================================================
-//  TailFlow - SF-07 的尾巴分段飘动
+//  TailFlow - SF-07 的尾巴飘动（照搬 SkinSyncMod 的 TailFlowDeform 做法）
 //  ---------------------------------------------------------------------------
-//  原版 `TailScript.Update()` 只做一件事：把**整根**尾巴绕根部转到移动方向
-//  （SignedAngle + LerpAngle，最后 clamp 到 ±80°）。所以尾巴是一根硬棍子，
-//  跑起来只是整根甩，没有"尾梢跟不上身体"的感觉。
+//  原版 `TailScript.Update()` 只把**整根**尾巴绕根部转到移动方向（clamp ±80°），
+//  是一根硬棍子。要做"飘"，必须放弃"旋转一张贴图"，改成**变形一条网格**。
 //
-//  参考 SkinSyncMod 的 TailFlowDeform，这里用同一套思路但换成更省事的实现：
-//    · 把尾巴 sprite 沿长轴切成 N 段（每段一个 SpriteRenderer，左端为轴心）
-//    · 一条 Verlet 链（世界坐标）当骨架：根点钉在尾巴根部，其余点受重力 + 风
-//    · 约束迭代保持段长，尾梢自然滞后、过冲、回弹
-//    · 每帧把段摆到链上，段的方向 = 相邻两点的连线
-//
-//  ★ 为什么不自己建 mesh：mesh 要自己找 URP 2D 的 lit 材质，稍微搞错就
-//    不受光照（暗层里尾巴会发光）。分段 SpriteRenderer 直接继承原尾巴的
-//    sharedMaterial / sortingLayer / color，光照表现和原版一模一样。
-//
-//  ★ 原版的 TailScript 不关：它负责"整根转到移动方向"，我们只在上面叠加弯曲。
-//    两者叠加出来的效果是"整根甩 + 尾梢拖"，比任何一边单独用都自然。
+//  反汇编 SkinSyncMod 得到的完整做法（这里逐条照搬）：
+//    ① mesh 挂在 **Body 根节点**下（不是尾巴自己），localPosition/Rotation 全零、scale 1
+//       —— 顶点点位每帧用世界坐标算完再 InverseTransformPoint 回来，所以不受
+//          父级旋转/镜像的干扰，也就不会像我上一版那样整体错位。
+//    ② 顶点是 (segments+1)×2 的一条四边形带：每段两个顶点（上下边缘），
+//       每段 2 个三角形；`_tris[i*6..+5] = (i*2, (i+1)*2, i*2+1, i*2+1, (i+1)*2, (i+1)*2+1)`
+//    ③ 宽度不是估的：`GetPixels32()` 扫贴图，**沿长轴逐列**求不透明像素的
+//       minY/maxY → 每列的中心偏移 `_segCenter[i]` 和半宽 `_segHalf[i]`（像素 / ppu）
+//       —— 尾巴从粗到细的轮廓就是从这里来的，所以弯曲时不会像分段贴图那样"断成一节一节"
+//    ④ 骨架是世界坐标的 Verlet 链：根点 = `transform.position`（尾巴 pivot 就是根部），
+//       第一个骨点用 `AnchorFollow` 软跟随"根点 + dir × segLen"，
+//       其余点吃重力 + 双频正弦风 + 速度阻尼；子步积分（dt 切成 ≤MaxFixedDt）
+//    ⑤ 约束跑两轮：先**弯曲角限制**（相邻两段夹角超过 MaxBendDeg 就把下一段转回去），
+//       再**段长约束**（把后一个点拉回 segLen）—— 前者防止尾巴对折，后者防止拉长
+//    ⑥ 摆顶点前对骨链做一次 `_smoothPos = Lerp(_smoothPos, bonePos, Smoothness)`，
+//       消掉逐帧抖动；切线用相邻两段的角平分线，side = 切线法线 × (dir.y >= 0 ? 1 : -1)
+//    ⑦ **光照**：`FindLitMaterialSource()` 从 `Body.limbs` 里随便找一个肢体，
+//       复制它的 sharedMaterial（URP 2D 的 Sprite-Lit），
+//       再用 `ResetTransientLimbUniforms()` 把 8 个伤害/状态属性清零：
+//       _BloodOverlay / _SkinDamage / _MuscleDamage / _InfectionPercent /
+//       _SnowAmount / _Dirtyness / _Wetness / _Pain
+//       —— 不清零的话尾巴会继承手臂上的血污、脏污、疼痛参数，颜色会乱。
+//       找不到肢体就退回 `Shader.Find("Sprites/Default")`。
+//    ⑧ 每帧把 `_mat.color = _sr.color`、`_mr.sortingLayerID/Order = _sr.xxx`，
+//       再把原 SpriteRenderer 关掉。
 // ============================================================================
 
 public static class TailFlow
 {
     public static bool Enabled = true;
-    public static int Segments = 9;
-    public static float WaveAmp = 1f;
-    public static float Damping = 0.86f;
+    public static int Segments = 10;
+    public static float WindAmp = 0.35f;
+    public static float WindFreq = 1.6f;
+    public static float Gravity = 6f;
+    public static float Damping = 0.35f;
+    public static float Smoothness = 0.5f;
+    public static float MaxBendDeg = 26f;
 
     private static TailRig _rig;
     private static bool _noTailWarned;
@@ -40,13 +56,21 @@ public static class TailFlow
         try
         {
             Enabled = plugin.Config.Bind("Cosmetic", "TailFlow", true,
-                "SF-07 的尾巴分段飘动（关掉 = 只有原版的整根旋转）").Value;
-            Segments = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSegments", 9,
-                "尾巴分几段（越多越柔顺，6~12 合适）").Value, 3, 16);
-            WaveAmp = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAmp", 1f,
-                "飘动幅度（0 = 只有惯性，1 = 默认，2 = 很飘）").Value, 0f, 3f);
-            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.86f,
-                "阻尼（越小停得越快；0.95 会很飘）").Value, 0.5f, 0.98f);
+                "SF-07 的尾巴网格飘动（关掉 = 只有原版整根旋转）").Value;
+            Segments = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSegments", 10,
+                "尾巴分几段（越多越柔顺，6~14 合适）").Value, 3, 20);
+            WindAmp = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAmp", 0.35f,
+                "风的幅度（0 = 只有惯性和重力，0.6 已经很飘）").Value, 0f, 2f);
+            WindFreq = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowFreq", 1.6f,
+                "风的频率（越大抖得越快）").Value, 0.2f, 6f);
+            Gravity = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowGravity", 6f,
+                "向下的重力（越大尾梢垂得越低）").Value, 0f, 30f);
+            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.35f,
+                "速度阻尼（越大越黏、停得越快；0.1 很飘）").Value, 0f, 0.95f);
+            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmooth", 0.5f,
+                "骨链平滑（0 = 不平滑、更硬；0.9 很顺滑但会拖）").Value, 0f, 0.95f);
+            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBend", 26f,
+                "相邻两段的最大夹角（度）—— 越小尾巴越硬，不会对折").Value, 5f, 80f);
         }
         catch { }
     }
@@ -61,10 +85,8 @@ public static class TailFlow
             var body = pc != null ? pc.body : null;
             if (body == null) { Kill(); return; }
 
-            // 原版角色：尾巴保持原样（我们的美术只给 SF-07）
             if (CharacterSelect.Current != CharacterSelect.Sf07) { Kill(); return; }
 
-            if (_rig != null && !_rig.Alive) { _rig = null; }
             if (_rig != null && _rig.Owner != body) Kill();
 
             if (_rig == null)
@@ -75,14 +97,14 @@ public static class TailFlow
                     if (!_noTailWarned)
                     {
                         _noTailWarned = true;
-                        Plugin.Log.LogInfo("[STEMFishDLC] Body 下没找到 TailScript —— 这个角色没有尾巴，飘动不生效");
+                        Plugin.Log.LogInfo("[STEMFishDLC] Body 下没找到 TailScript —— 这个角色没有尾巴");
                     }
                     return;
                 }
 
                 var sr = tail.GetComponent<SpriteRenderer>();
                 if (sr == null) sr = tail.GetComponentInChildren<SpriteRenderer>(true);
-                if (sr == null || sr.sprite == null)
+                if (sr == null)
                 {
                     if (!_noSrWarned)
                     {
@@ -92,11 +114,10 @@ public static class TailFlow
                     return;
                 }
 
-                // 复用已有组件：EngineTick 一帧可能 Pump 多次，直接 AddComponent 会堆一摞
                 _rig = tail.gameObject.GetComponent<TailRig>();
                 if (_rig == null) _rig = tail.gameObject.AddComponent<TailRig>();
                 _rig.Bind(sr, body);
-                Plugin.Log.LogInfo($"[STEMFishDLC] 尾巴飘动已挂载（sprite={sr.sprite.name}，{Segments} 段）");
+                Plugin.Log.LogInfo($"[STEMFishDLC] 尾巴网格已挂载（sprite={sr.sprite?.name}，{Segments} 段）");
             }
 
             _rig.Sync();
@@ -113,249 +134,465 @@ public static class TailFlow
         var rig = _rig;
         _rig = null;
         try { rig.Restore(); } catch { }
-        // 组件必须销毁：只把引用置空的话，下一次 Tick 会在同一个物体上再挂一个
         try { UnityEngine.Object.Destroy(rig); } catch { }
     }
 }
 
 // ============================================================================
-//  挂在尾巴 GameObject 上的组件
+//  尾巴网格
 // ============================================================================
 public class TailRig : MonoBehaviour
 {
-    private SpriteRenderer _origin;      // 原版那根整根尾巴
-    private Body _owner;
+    private SpriteRenderer _sr;
+    private Body _body;
 
-    private Transform[] _segTr;
-    private SpriteRenderer[] _segSr;
-    private Sprite[] _segSprites;
+    private GameObject _meshGo;
+    private MeshFilter _mf;
+    private MeshRenderer _mr;
+    private Mesh _mesh;
+    private Material _mat;
 
-    private Vector2[] _pts;              // 世界坐标骨架
-    private Vector2[] _prev;
+    private Vector2[] _bonePos;
+    private Vector2[] _bonePrev;
+    private Vector2[] _smoothPos;
+    private float[] _segHalf;
+    private float[] _segCenter;
+
+    private Vector3[] _verts;
+    private Vector2[] _uvs;
+    private int[] _tris;
 
     private float _segLen;
-    private float _halfLocal;
-    private float _localLen;
-    private Sprite _lastSprite;
-    private bool _built;
+    private Vector2 _dir = Vector2.right;
+    private bool _physicsInited;
+    private int _cachedSpriteId;
     private bool _restored;
 
-    public bool Alive => this != null && _origin != null;
-    public Body Owner => _owner;
+    public bool Alive => this != null && _sr != null;
+    public Body Owner => _body;
 
-    public void Bind(SpriteRenderer origin, Body owner)
+    public void Bind(SpriteRenderer sr, Body body)
     {
-        _origin = origin;
-        _owner = owner;
-        _origin.enabled = false;         // 原图藏起来，只留骨架数据
+        _sr = sr;
+        _body = body;
         _restored = false;
+        if (_meshGo == null) BuildMeshChild();
     }
 
     public void Restore()
     {
         if (_restored) return;
         _restored = true;
-        try { if (_origin != null) _origin.enabled = true; } catch { }
-        ClearSegments();
+        try { if (_sr != null) _sr.enabled = true; } catch { }
+        try { if (_meshGo != null) Destroy(_meshGo); } catch { }
+        try { if (_mesh != null) Destroy(_mesh); } catch { }
+        try { if (_mat != null) Destroy(_mat); } catch { }
+        _meshGo = null;
+        _mesh = null;
+        _mat = null;
     }
 
     private void OnDestroy() => Restore();
 
-    // 换皮肤 / 读档重建时 sprite 会换掉，需要重新切片
-    public void Sync()
+    // ======================================================================
+    //  BuildMeshChild —— mesh 挂在 Body 根下，全部 identity
+    // ======================================================================
+    private void BuildMeshChild()
     {
-        if (_origin == null) return;
-        var sp = _origin.sprite;
-        if (sp == null) { ClearSegments(); return; }
-        if (_built && sp == _lastSprite) return;
-        Rebuild(sp);
+        _meshGo = new GameObject("TailDeformMesh");
+        var parent = _body != null ? _body.transform : transform;
+        _meshGo.transform.SetParent(parent, false);
+        _meshGo.transform.localPosition = Vector3.zero;
+        _meshGo.transform.localRotation = Quaternion.identity;
+        _meshGo.transform.localScale = Vector3.one;
+
+        _mf = _meshGo.AddComponent<MeshFilter>();
+        _mr = _meshGo.AddComponent<MeshRenderer>();
+
+        // ---- 材质：抄一个肢体的 lit 材质，再把瞬时状态清零 ----
+        var src = FindLitMaterialSource();
+        if (src != null && src.sharedMaterial != null)
+            _mat = new Material(src.sharedMaterial);
+        else
+            _mat = new Material(Shader.Find("Sprites/Default"));
+
+        ResetTransientLimbUniforms(_mat);
+        _mr.sharedMaterial = _mat;
+
+        _mesh = new Mesh();
+        _mesh.name = "TailDeformMesh";
+        _mesh.MarkDynamic();
+        _mf.sharedMesh = _mesh;
     }
 
-    private void Rebuild(Sprite sp)
+    /// <summary>从 Body.limbs 里找一个带材质的手臂/腿，抄它的 URP 2D lit 材质</summary>
+    private Renderer FindLitMaterialSource()
     {
-        ClearSegments();
+        try
+        {
+            if (_body == null || _body.limbs == null) return null;
+            for (int i = 0; i < _body.limbs.Length; i++)
+            {
+                var limb = _body.limbs[i];
+                if (limb == null) continue;
+                var r = limb.GetComponent<SpriteRenderer>();
+                if (r != null && r.sharedMaterial != null) return r;
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    /// <summary>
+    /// 肢体材质上挂着 8 个"瞬时状态"属性（血污 / 伤口 / 脏 / 湿 / 疼…）。
+    /// 不清零的话尾巴会继承手臂的状态，颜色和亮度都不对。
+    /// </summary>
+    private static void ResetTransientLimbUniforms(Material m)
+    {
+        if (m == null) return;
+        string[] props =
+        {
+            "_BloodOverlay", "_SkinDamage", "_MuscleDamage", "_InfectionPercent",
+            "_SnowAmount", "_Dirtyness", "_Wetness", "_Pain",
+        };
+        for (int i = 0; i < props.Length; i++)
+        {
+            if (m.HasProperty(props[i])) m.SetFloat(props[i], 0f);
+        }
+    }
+
+    // ======================================================================
+    //  Sync：换皮肤（sprite 变了）就重建
+    // ======================================================================
+    public void Sync()
+    {
+        if (_sr == null) return;
+        var sp = _sr.sprite;
+        if (sp == null) return;
+
+        int seg = Mathf.Max(2, TailFlow.Segments);
+        bool need = sp.GetInstanceID() != _cachedSpriteId ||
+                    _bonePos == null || _bonePos.Length != seg + 1;
+        if (need) Rebuild(sp, seg);
+
+        if (_sr.enabled) _sr.enabled = false;
+        if (_mat != null) _mat.color = _sr.color;
+        if (_mr != null)
+        {
+            _mr.sortingLayerID = _sr.sortingLayerID;
+            _mr.sortingOrder = _sr.sortingOrder;
+        }
+    }
+
+    // ======================================================================
+    //  Rebuild：扫像素 → 每列半宽/中心 → 顶点/UV/三角
+    // ======================================================================
+    private void Rebuild(Sprite sp, int seg)
+    {
+        _cachedSpriteId = sp.GetInstanceID();
 
         var tex = sp.texture;
         if (tex == null) return;
 
-        var rect = sp.rect;
+        var rect = sp.textureRect;
+        int x0 = Mathf.RoundToInt(rect.x), y0 = Mathf.RoundToInt(rect.y);
+        int w = Mathf.RoundToInt(rect.width), h = Mathf.RoundToInt(rect.height);
+        if (w <= 0 || h <= 0) return;
+
         float ppu = sp.pixelsPerUnit <= 0.01f ? 8f : sp.pixelsPerUnit;
-        int totalPx = Mathf.Max(1, Mathf.RoundToInt(rect.width));
 
-        int want = Mathf.Clamp(TailFlow.Segments, 3, 16);
-        int segPx = Mathf.Max(2, totalPx / want);
-        int count = Mathf.CeilToInt(totalPx / (float)segPx);
+        // 世界长度（骨链用世界坐标）
+        float scale = Mathf.Abs(transform.lossyScale.x);
+        if (scale < 0.0001f) scale = 1f;
 
-        _segTr = new Transform[count];
-        _segSr = new SpriteRenderer[count];
-        _segSprites = new Sprite[count];
+        int n = seg + 1;
+        _verts = new Vector3[n * 2];
+        _uvs = new Vector2[n * 2];
+        _tris = new int[seg * 6];
+        _bonePos = new Vector2[n];
+        _bonePrev = new Vector2[n];
+        _smoothPos = new Vector2[n];
+        _segHalf = new float[n];
+        _segCenter = new float[n];
+
+        for (int i = 0; i < seg; i++)
+        {
+            int v0 = i * 2, v1 = i * 2 + 1, v2 = (i + 1) * 2, v3 = (i + 1) * 2 + 1;
+            int t = i * 6;
+            _tris[t + 0] = v0;
+            _tris[t + 1] = v2;
+            _tris[t + 2] = v1;
+            _tris[t + 3] = v1;
+            _tris[t + 4] = v2;
+            _tris[t + 5] = v3;
+        }
+
+        int firstCol = 0, lastCol = w - 1;
+        BuildProfileFromPixels(sp, tex, x0, y0, w, h, ppu, n, ref firstCol, ref lastCol);
+        int axisLenPx = Mathf.Max(1, lastCol - firstCol + 1);
+
+        _segLen = axisLenPx / ppu * scale;
+
+        // ---- UV：沿长轴线性，v 用贴图内的实际上下边界 ----
+        float texW = tex.width, texH = tex.height;
+        for (int i = 0; i < n; i++)
+        {
+            float u = (x0 + firstCol + (axisLenPx - 1) * (i / (float)(n - 1))) / texW;
+            u = Mathf.Clamp01(u);
+            _uvs[i * 2] = new Vector2(u, y0 / texH);
+            _uvs[i * 2 + 1] = new Vector2(u, (y0 + h) / texH);
+        }
+
+        if (_mat != null) _mat.mainTexture = tex;
+        _physicsInited = false;
+
+        Plugin.Log.LogInfo($"[STEMFishDLC] 尾巴网格重建: {sp.name} {w}x{h}px → {seg} 段 | " +
+                           $"有效长 {axisLenPx}px ppu={ppu:0.##} 世界段长={_segLen:0.###}u 缩放={scale:0.##}");
+    }
+
+    /// <summary>
+    /// 逐列扫不透明像素：得到每列的中心偏移和半宽（像素 / ppu，mesh 局部单位）。
+    /// 扫不动（贴图不可读）就退回"矩形带"。
+    /// </summary>
+    private void BuildProfileFromPixels(Sprite sp, Texture2D tex, int x0, int y0, int w, int h,
+                                        float ppu, int n, ref int firstCol, ref int lastCol)
+    {
+        Color32[] px = null;
+        try { px = tex.GetPixels32(); } catch { px = null; }
+
+        int tw = tex.width;
+
+        if (px == null)
+        {
+            BuildFallbackProfile(sp, w, h, ppu, n);
+            firstCol = 0;
+            lastCol = w - 1;
+            return;
+        }
+
+        // 先找有像素的首/末列（去掉两侧透明留白）
+        int first = -1, last = -1;
+        for (int x = 0; x < w; x++)
+        {
+            bool any = false;
+            for (int y = 0; y < h; y++)
+            {
+                int idx = (y0 + y) * tw + (x0 + x);
+                if (idx >= 0 && idx < px.Length && px[idx].a > 8) { any = true; break; }
+            }
+            if (any) { if (first < 0) first = x; last = x; }
+        }
+        if (first < 0) { first = 0; last = w - 1; }
+
+        firstCol = first;
+        lastCol = last;
+
+        float pivotY = sp.pivot.y;
+
+        for (int i = 0; i < n; i++)
+        {
+            int x = first + Mathf.RoundToInt((last - first) * (i / (float)(n - 1)));
+            x = Mathf.Clamp(x, first, last);
+
+            int minY = -1, maxY = -1;
+            for (int y = 0; y < h; y++)
+            {
+                int idx = (y0 + y) * tw + (x0 + x);
+                if (idx < 0 || idx >= px.Length || px[idx].a <= 8) continue;
+                if (minY < 0) minY = y;
+                maxY = y;
+            }
+
+            float cy, hh;
+            if (minY < 0)
+            {
+                cy = h * 0.5f;
+                hh = Mathf.Max(0.5f, h * 0.5f);
+            }
+            else
+            {
+                cy = (minY + maxY + 1) * 0.5f;
+                hh = Mathf.Max(0.5f, (maxY - minY + 1) * 0.5f);
+            }
+
+            _segCenter[i] = (cy - pivotY) / ppu;
+            _segHalf[i] = hh / ppu;
+        }
+    }
+
+    /// <summary>贴图不可读时的退路：等宽矩形带（没有粗细变化，但至少位置对）</summary>
+    private void BuildFallbackProfile(Sprite sp, int w, int h, float ppu, int n)
+    {
+        float pivotY = sp.pivot.y;
+        float cy = h * 0.5f;
+        float hh = h * 0.5f;
+        for (int i = 0; i < n; i++)
+        {
+            _segCenter[i] = (cy - pivotY) / ppu;
+            _segHalf[i] = hh / ppu;
+        }
+        Plugin.Log.LogWarning("[STEMFishDLC] 尾巴贴图不可读，退回矩形带（会没有粗细变化）");
+    }
+
+    // ======================================================================
+    //  InitBonesAt：链从尾巴根部沿"身体后方"排开
+    // ======================================================================
+    private void InitBonesAt(Vector2 pos, Vector2 dir)
+    {
+        for (int i = 0; i < _bonePos.Length; i++)
+        {
+            _bonePos[i] = pos + dir * (_segLen * i);
+            _bonePrev[i] = _bonePos[i];
+            _smoothPos[i] = _bonePos[i];
+        }
+        _physicsInited = true;
+    }
+
+    // ======================================================================
+    //  LateUpdate：Verlet + 弯曲限制 + 段长约束 + 顶点生成
+    // ======================================================================
+    private void LateUpdate()
+    {
+        if (_sr == null || _sr.sprite == null) return;
+        if (_meshGo == null || _bonePos == null || _bonePos.Length < 2) return;
+
+        float dt = Time.deltaTime;
+        if (dt <= 0f) return;
+
+        // 尾巴朝身体后方
+        bool right = true;
+        try { right = _body == null || _body.isRight; } catch { }
+        _dir = right ? Vector2.left : Vector2.right;
+
+        Vector2 root = transform.position;
+
+        if (!_physicsInited) InitBonesAt(root, _dir);
+
+        int count = _bonePos.Length;
+
+        // ---- 物理参数 ----
+        float speed = 0f;
+        try
+        {
+            if (_body != null && _body.rb != null) speed = Mathf.Abs(_body.rb.velocity.x);
+        }
+        catch { }
+
+        Vector2 gravity = new Vector2(0f, -TailFlow.Gravity);
+        float damp = Mathf.Clamp01(TailFlow.Damping);
+        float maxBend = Mathf.Max(0f, TailFlow.MaxBendDeg) * Mathf.Deg2Rad;
+        float maxStep = 0.6f;
+        float smooth = Mathf.Clamp(TailFlow.Smoothness, 0f, 0.99f);
+        float anchorFollow = 0.45f;
+
+        float windPhase = Time.time * TailFlow.WindFreq;
+        float windAmp = TailFlow.WindAmp + speed * 0.05f;
+
+        // ---- 根点 + 第一个骨点软跟随 ----
+        _bonePos[0] = root;
+        _bonePrev[0] = root;
+
+        Vector2 anchor = root + _dir * _segLen;
+        _bonePos[1] = Vector2.Lerp(_bonePos[1], anchor, anchorFollow);
+        _bonePrev[1] = Vector2.Lerp(_bonePrev[1], anchor, anchorFollow);
+
+        // ---- 子步积分 ----
+        float maxFixedDt = 1f / 50f;
+        int steps = Mathf.Max(1, Mathf.CeilToInt(dt / maxFixedDt));
+        float h = dt / steps;
+
+        for (int s = 0; s < steps; s++)
+        {
+            for (int i = 2; i < count; i++)
+            {
+                Vector2 vel = (_bonePos[i] - _bonePrev[i]) * (1f - damp);
+
+                if (vel.magnitude > maxStep) vel = vel.normalized * maxStep;
+
+                _bonePrev[i] = _bonePos[i];
+
+                Vector2 next = _bonePos[i] + vel + gravity * (h * h);
+
+                float k = i / (float)(count - 1);
+                float amp = windAmp * k * k;                  // 越靠尾梢越飘
+                float wave = Mathf.Sin(windPhase + k * Mathf.PI * 2f) * amp;
+                next += Vector2.up * wave;
+
+                Vector2 d = next - _bonePos[i];
+                if (d.magnitude > maxStep) next = _bonePos[i] + d.normalized * maxStep;
+
+                _bonePos[i] = next;
+            }
+
+            // ---- 约束 1：相邻两段最大夹角 ----
+            for (int i = 1; i < count - 1; i++)
+            {
+                Vector2 d1 = _bonePos[i] - _bonePos[i - 1];
+                Vector2 d2 = _bonePos[i + 1] - _bonePos[i];
+                if (d1.sqrMagnitude < 1e-6f || d2.sqrMagnitude < 1e-6f) continue;
+
+                float a1 = Mathf.Atan2(d1.y, d1.x) * Mathf.Rad2Deg;
+                float a2 = Mathf.Atan2(d2.y, d2.x) * Mathf.Rad2Deg;
+                float delta = Mathf.DeltaAngle(a1, a2) * Mathf.Deg2Rad;
+
+                if (Mathf.Abs(delta) > maxBend)
+                {
+                    float clamped = Mathf.Clamp(delta, -maxBend, maxBend);
+                    float cos = Mathf.Cos(clamped), sin = Mathf.Sin(clamped);
+                    Vector2 u = d1.normalized;
+                    Vector2 rot = new Vector2(u.x * cos - u.y * sin, u.x * sin + u.y * cos);
+                    _bonePos[i + 1] = _bonePos[i] + rot * d2.magnitude;
+                }
+            }
+
+            // ---- 约束 2：段长（只拉后一个点） ----
+            for (int i = 1; i < count; i++)
+            {
+                Vector2 d = _bonePos[i] - _bonePos[i - 1];
+                float len = d.magnitude;
+                if (len < 1e-5f) continue;
+                float corr = len - _segLen;
+                _bonePos[i] -= d / len * corr;
+            }
+        }
+
+        // ---- 平滑 ----
+        if (_smoothPos == null || _smoothPos.Length != count) _smoothPos = new Vector2[count];
+        for (int i = 0; i < count; i++)
+            _smoothPos[i] = Vector2.Lerp(_bonePos[i], _smoothPos[i], smooth);
+
+        // ---- 顶点 ----
+        float sideSign = _dir.y >= 0f ? 1f : -1f;
+        var meshTr = _meshGo.transform;
+        float z = transform.position.z;
 
         for (int i = 0; i < count; i++)
         {
-            int x0 = i * segPx;
-            int x1 = Mathf.Min(totalPx, x0 + segPx + 1);   // 相邻段重叠 1px，视觉上不留缝
-            if (x1 <= x0) x1 = Mathf.Min(totalPx, x0 + 1);
-
-            var r = new Rect(rect.x + x0, rect.y, x1 - x0, rect.height);
-            Sprite piece;
-            try
+            Vector2 tangent;
+            if (i == 0) tangent = _smoothPos[1] - _smoothPos[0];
+            else if (i == count - 1) tangent = _smoothPos[count - 1] - _smoothPos[count - 2];
+            else
             {
-                piece = Sprite.Create(tex, r, new Vector2(0f, 0.5f), ppu, 0, SpriteMeshType.FullRect);
-                piece.name = sp.name + "_tf" + i;
+                Vector2 a = (_smoothPos[i] - _smoothPos[i - 1]).normalized;
+                Vector2 b = (_smoothPos[i + 1] - _smoothPos[i]).normalized;
+                tangent = a + b;
             }
-            catch { continue; }
+            if (tangent.sqrMagnitude < 1e-6f) tangent = _dir;
+            tangent.Normalize();
 
-            var go = new GameObject("TailSeg" + i);
-            go.transform.SetParent(transform, false);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = piece;
-            sr.sharedMaterial = _origin.sharedMaterial;
-            sr.sortingLayerID = _origin.sortingLayerID;
-            sr.sortingOrder = _origin.sortingOrder;
-            sr.color = _origin.color;
-            // ★ 不复制 flipX/flipY：pivot 已经设成左端，翻转会让段朝反方向画
-            sr.flipX = false;
-            sr.flipY = false;
+            Vector2 side = new Vector2(-tangent.y, tangent.x) * sideSign;
+            Vector2 mid = _smoothPos[i] + side * _segCenter[i];
+            Vector2 lo = mid - side * _segHalf[i];
+            Vector2 hi = mid + side * _segHalf[i];
 
-            _segTr[i] = go.transform;
-            _segSr[i] = sr;
-            _segSprites[i] = piece;
+            _verts[i * 2] = meshTr.InverseTransformPoint(new Vector3(lo.x, lo.y, z));
+            _verts[i * 2 + 1] = meshTr.InverseTransformPoint(new Vector3(hi.x, hi.y, z));
         }
 
-        _localLen = rect.width / ppu;
-        _halfLocal = _localLen * 0.5f;
-
-        float scale = Mathf.Abs(transform.lossyScale.x);
-        if (scale < 0.0001f) scale = 1f;
-        float worldLen = _localLen * scale;
-        _segLen = worldLen / Mathf.Max(1, count);
-
-        _pts = new Vector2[count + 1];
-        _prev = new Vector2[count + 1];
-        ResetChain();
-
-        _lastSprite = sp;
-        _built = true;
-
-        Plugin.Log.LogInfo($"[STEMFishDLC] 尾巴切片: {sp.name} {totalPx}px → {count} 段 | " +
-                           $"ppu={ppu:0.##} 世界长={worldLen:0.##}u 段长={_segLen:0.###}u " +
-                           $"缩放={scale:0.##} 镜像={(transform.lossyScale.x < 0f ? "是" : "否")}");
-    }
-
-    private void ResetChain()
-    {
-        Vector2 root = RootWorld();
-        Vector2 dir = transform.TransformDirection(Vector3.right);
-        dir = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector2.right;
-        for (int i = 0; i < _pts.Length; i++)
-        {
-            _pts[i] = root + dir * (_segLen * i);
-            _prev[i] = _pts[i];
-        }
-    }
-
-    private Vector2 RootWorld()
-    {
-        Vector3 local = new Vector3(-_halfLocal, 0f, 0f);
-        Vector3 w = transform.TransformPoint(local);
-        return new Vector2(w.x, w.y);
-    }
-
-    private void LateUpdate()
-    {
-        if (!_built || _pts == null || _pts.Length < 2) return;
-        if (_origin == null) return;
-
-        float dt = Mathf.Min(Time.deltaTime, 0.05f);
-        if (dt <= 0f) return;
-
-        Vector2 root = RootWorld();
-        float amp = TailFlow.WaveAmp;
-        float damp = TailFlow.Damping;
-        float t = Time.time;
-
-        // ---- 1. 积分（世界坐标，Verlet） ----
-        for (int i = 1; i < _pts.Length; i++)
-        {
-            Vector2 p = _pts[i];
-            Vector2 v = (p - _prev[i]) * damp;
-
-            float k = i / (float)(_pts.Length - 1);       // 越靠近尾梢越飘
-            float wind = (Mathf.Sin(t * 1.9f + i * 0.55f) * 2.6f +
-                          Mathf.Sin(t * 0.8f + 1.2f) * 1.5f) * k * amp;
-
-            Vector2 acc = new Vector2(wind, -0.6f + Mathf.Sin(t * 2.3f + i * 0.7f) * 1.2f * k * amp);
-
-            _prev[i] = p;
-            _pts[i] = p + v + acc * dt * dt;
-        }
-        _pts[0] = root;
-
-        // ---- 2. 段长约束 ----
-        for (int iter = 0; iter < 3; iter++)
-        {
-            for (int i = 1; i < _pts.Length; i++)
-            {
-                Vector2 d = _pts[i] - _pts[i - 1];
-                float len = d.magnitude;
-                if (len < 1e-5f) continue;
-                Vector2 corr = d * (1f - _segLen / len);
-                if (i == 1)
-                {
-                    _pts[i] -= corr;                       // 根点不动，全给第一个点
-                }
-                else
-                {
-                    _pts[i] -= corr * 0.5f;
-                    _pts[i - 1] += corr * 0.5f;
-                }
-            }
-            _pts[0] = root;
-        }
-
-        // ---- 3. 摆段 ----
-        // ★ Body.SwitchDir 用 localScale.x = -1 表示朝向，镜像会让"世界角度"和
-        //   子物体的局部角度反号。所以这里统一算局部角度：
-        //      世界角 = 父级角 - 局部角（镜像时）
-        //      不镜像 = 父级角 + 局部角
-        //   位置用 InverseTransformPoint，负缩放会被自动处理。
-        float z = transform.position.z;
-        float parentAng = transform.eulerAngles.z;
-        float sgn = Mathf.Sign(transform.lossyScale.x);
-        if (Mathf.Abs(sgn) < 0.5f) sgn = 1f;
-
-        for (int i = 0; i < _segTr.Length && i + 1 < _pts.Length; i++)
-        {
-            var tr = _segTr[i];
-            if (tr == null) continue;
-
-            Vector2 a = _pts[i];
-            Vector2 d = _pts[i + 1] - a;
-            float ang = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
-
-            tr.localPosition = transform.InverseTransformPoint(new Vector3(a.x, a.y, z));
-            tr.localRotation = Quaternion.Euler(0f, 0f, (ang - parentAng) * sgn);
-        }
-    }
-
-    private void ClearSegments()
-    {
-        if (_segTr != null)
-        {
-            for (int i = 0; i < _segTr.Length; i++)
-                if (_segTr[i] != null) Destroy(_segTr[i].gameObject);
-        }
-        if (_segSprites != null)
-        {
-            for (int i = 0; i < _segSprites.Length; i++)
-                if (_segSprites[i] != null) Destroy(_segSprites[i]);
-        }
-        _segTr = null;
-        _segSr = null;
-        _segSprites = null;
-        _pts = null;
-        _prev = null;
-        _built = false;
-        _lastSprite = null;
+        _mesh.Clear();
+        _mesh.vertices = _verts;
+        _mesh.uv = _uvs;
+        _mesh.triangles = _tris;
+        _mesh.RecalculateBounds();
     }
 }
