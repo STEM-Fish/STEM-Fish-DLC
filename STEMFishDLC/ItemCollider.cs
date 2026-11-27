@@ -26,7 +26,7 @@ public static class ItemCollider
 
     private static readonly Dictionary<string, Rect> _bboxCache = new Dictionary<string, Rect>();
 
-    public static void Fit(GameObject go, Sprite sprite, string key)
+    public static void Fit(GameObject go, Sprite sprite, string key, float pad = 0f)
     {
         if (go == null || sprite == null) return;
         try
@@ -59,6 +59,13 @@ public static class ItemCollider
 
             Vector2 size = new Vector2(right - left, top - bottom);
             Vector2 offset = new Vector2((left + right) * 0.5f, (bottom + top) * 0.5f);
+
+            // pad：碰撞箱比不透明像素再外扩一圈（小物件贴地时更好点中 / 拾取判定更宽容）
+            if (pad > 0f)
+            {
+                float k = 1f + Mathf.Clamp(pad, 0f, 1f);
+                size *= k;
+            }
 
             int n = 0;
             foreach (var col in go.GetComponentsInChildren<Collider2D>(true))

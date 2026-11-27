@@ -186,9 +186,9 @@ public static class ItemRegistry
             ammoTypeValue = 3,
             ammoMaxRounds = 20,
             spriteOverride = "mdrz9_mag",
-            // 7.62 弹匣比 5.56 弹匣肥一圈：世界尺寸放大 55%。
-            // 以前严格匹配 riflemagazine 的尺寸，掉在地上又小又暗（Nexus 反馈）。
-            groundScale = 1.55f,
+            // 7.62 弹匣比 5.56 弹匣肥一圈：世界尺寸放大 90%。
+            // 1.55 时代还是一小撮，Nexus 反馈掉在地上要按 Ctrl 才看得见。
+            groundScale = 1.9f,
         },
         // 7.62×51 散弹（借 5.56 的贴图，染色区分）
         new FishItem
@@ -871,7 +871,8 @@ public static class ItemRegistry
                     if (s != null)
                     {
                         sr.sprite = s;
-                        ItemCollider.Fit(go, s, def.id);      // 弹匣的碰撞箱贴合新贴图
+                        // 弹匣：碰撞箱再外扩 15%，躺在地上时不用精确点到像素也能捡
+                        ItemCollider.Fit(go, s, def.id, def.id == "mdrz9mag" ? 0.15f : 0f);
                     }
                 }
             }
