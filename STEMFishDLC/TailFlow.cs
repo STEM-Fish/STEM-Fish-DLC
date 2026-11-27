@@ -45,18 +45,19 @@ public static class TailFlow
     //   上一版我凭感觉填的值偏差很大（重力 5 倍、风力 29 倍、迭代少一半），
     //   表现就是"萎焉下垂 + 机械抖动 + 一节一节"。
     public static bool Enabled = true;
-    public static int Segments = 10;
+    public static int Segments = 18;
+    public static float Width = 1.7f;
     public static float WindAmp = 0.012f;
     public static float SpeedDisturb = 0.005f;
     public static float WindFreq = 1.2f;
-    public static float Gravity = 1.2f;
-    public static float Damping = 0.45f;
+    public static float Gravity = 1.0f;
+    public static float Damping = 0.40f;
     public static float SpeedDamping = 0.05f;
     public static float Stiffness = 1f;
-    public static float Smoothness = 0.55f;
-    public static float MaxBendDeg = 18f;
+    public static float Smoothness = 0.30f;
+    public static float MaxBendDeg = 30f;
     public static float AnchorFollow = 1f;
-    public static float MaxStep = 0.15f;
+    public static float MaxStep = 0.40f;
     public static bool FrontGuard = true;
 
     private static TailRig _rig;
@@ -69,28 +70,30 @@ public static class TailFlow
         {
             Enabled = plugin.Config.Bind("Cosmetic", "TailFlow", true,
                 "SF-07 的尾巴网格飘动（关掉 = 只有原版整根旋转）").Value;
-            Segments = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSegments", 10,
-                "尾巴分几段（越多越柔顺，6~14 合适）").Value, 3, 20);
+            Segments = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSegments", 18,
+                "尾巴分几段（越多越柔顺；12~24 平滑，太多会吃性能）").Value, 4, 32);
+            Width = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowWidth", 1.7f,
+                "尾巴粗细倍率（1 = 贴图原宽；贴图本身只有 5~10 像素高，1.6~2.0 才饱满）").Value, 0.3f, 3f);
             WindAmp = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAmp", 0.35f,
                 "风的幅度（0 = 只有惯性和重力，0.6 已经很飘）").Value, 0f, 2f);
             WindFreq = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowFreq", 1.6f,
                 "风的频率（越大抖得越快）").Value, 0.2f, 6f);
-            Gravity = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowGravity", 1.2f,
-                "向下的重力（原版 1.2，越大尾梢垂得越低）").Value, 0f, 20f);
-            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.45f,
-                "速度阻尼（原版 0.45，越大越黏）").Value, 0f, 0.95f);
+            Gravity = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowGravity", 1f,
+                "向下的重力（越大尾梢垂得越低）").Value, 0f, 20f);
+            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.40f,
+                "速度阻尼（越大越黏、停得越快）").Value, 0f, 0.95f);
             SpeedDamping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSpeedDamp", 0.05f,
                 "速度越快阻尼越小（原版 0.05）").Value, 0f, 0.3f);
             Stiffness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowStiffness", 1f,
                 "段长约束强度（1 = 硬约束，越小越软）").Value, 0.1f, 1f);
-            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmooth", 0.55f,
-                "骨链平滑（原版 0.55，越大越顺滑但会拖）").Value, 0f, 0.95f);
-            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBend", 18f,
-                "相邻两段的最大夹角（度）—— 原版 18，越小尾巴越硬").Value, 5f, 80f);
+            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmooth", 0.30f,
+                "骨链平滑（越大越顺滑，但滞后也越大，会显得迟钝）").Value, 0f, 0.95f);
+            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBend", 30f,
+                "相邻两段的最大夹角（度）—— 段数越多单段弯得越少，30 左右刚好").Value, 5f, 80f);
             AnchorFollow = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAnchor", 1f,
                 "第一骨点跟随根部的强度（1 = 完全跟随）").Value, 0.05f, 1f);
-            MaxStep = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxStep", 0.15f,
-                "单帧最大位移（原版 0.15，太大动起来会一顿一顿）").Value, 0.02f, 1f);
+            MaxStep = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxStep", 0.40f,
+                "单个子步的最大位移（太小会跟不上身体、一顿一顿）").Value, 0.02f, 2f);
             FrontGuard = plugin.Config.Bind("Cosmetic", "TailFlowFrontGuard", true,
                 "防止尾巴甩到身体前面（原版开）").Value;
         }
@@ -457,6 +460,22 @@ public class TailRig : MonoBehaviour
             _segCenter[i] = (cy - pivotY) / ppu * scale;
             _segHalf[i] = hh / ppu * scale;
         }
+
+        // ★ 轮廓平滑：像素扫描出来的宽度是逐列跳变的（54px 的图每 1.5px 采一次），
+        //   直接拿去生成网格，边缘会有明显的"台阶"，看起来就是一节一节。
+        //   两遍 3 点平均就能把台阶抹平，又不会把尾巴的粗细变化吃掉。
+        var tmpH = new float[n];
+        var tmpC = new float[n];
+        for (int pass = 0; pass < 2; pass++)
+        {
+            Array.Copy(_segHalf, tmpH, n);
+            Array.Copy(_segCenter, tmpC, n);
+            for (int i = 1; i < n - 1; i++)
+            {
+                _segHalf[i] = (tmpH[i - 1] + tmpH[i] + tmpH[i + 1]) / 3f;
+                _segCenter[i] = (tmpC[i - 1] + tmpC[i] + tmpC[i + 1]) / 3f;
+            }
+        }
     }
 
     /// <summary>贴图不可读时的退路：等宽矩形带（没有粗细变化，但至少位置对）</summary>
@@ -529,7 +548,7 @@ public class TailRig : MonoBehaviour
         float smooth = Mathf.Clamp(TailFlow.Smoothness, 0f, 0.99f);
         float anchorFollow = Mathf.Clamp01(TailFlow.AnchorFollow);
         float stiffness = Mathf.Clamp01(TailFlow.Stiffness);
-        int iters = 6;                                   // 原版 ConstraintIters
+        int iters = 8;                                   // 比原版多两次，段多时更稳
 
         // 风力：频率和幅度都随速度涨（原版 WindFreq + speed*0.15 / WindAmp + speed*SpeedDisturb）
         float windFreq = TailFlow.WindFreq + speed * 0.15f;
@@ -649,9 +668,10 @@ public class TailRig : MonoBehaviour
             tangent.Normalize();
 
             Vector2 side = new Vector2(-tangent.y, tangent.x) * sideSign;
+            float halfW = _segHalf[i] * TailFlow.Width;      // 贴图只有 5~10px 高，乘个倍率才饱满
             Vector2 mid = _smoothPos[i] + side * _segCenter[i];
-            Vector2 lo = mid - side * _segHalf[i];
-            Vector2 hi = mid + side * _segHalf[i];
+            Vector2 lo = mid - side * halfW;
+            Vector2 hi = mid + side * halfW;
 
             _verts[i * 2] = meshTr.InverseTransformPoint(new Vector3(lo.x, lo.y, z));
             _verts[i * 2 + 1] = meshTr.InverseTransformPoint(new Vector3(hi.x, hi.y, z));
