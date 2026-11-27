@@ -328,10 +328,14 @@ public class TailRig : MonoBehaviour
         }
 
         int firstCol = 0, lastCol = w - 1;
-        BuildProfileFromPixels(sp, tex, x0, y0, w, h, ppu, n, ref firstCol, ref lastCol);
+        BuildProfileFromPixels(sp, tex, x0, y0, w, h, ppu, n, scale, ref firstCol, ref lastCol);
         int axisLenPx = Mathf.Max(1, lastCol - firstCol + 1);
 
-        _segLen = axisLenPx / ppu * scale;
+        // ★ 段长 = 总长 ÷ 段数。这里以前漏了除法，直接把整条尾巴的长度
+        //   当成了一段，链上每一段都按整条长度排开 → 总长变成 段数×尾长（67u），
+        //   看起来就是一条横穿地图的白线。
+        float localLen = axisLenPx / ppu;
+        _segLen = localLen / seg * scale;
 
         // ---- UV：沿长轴线性，v 用贴图内的实际上下边界 ----
         float texW = tex.width, texH = tex.height;
@@ -347,7 +351,8 @@ public class TailRig : MonoBehaviour
         _physicsInited = false;
 
         Plugin.Log.LogInfo($"[STEMFishDLC] 尾巴网格重建: {sp.name} {w}x{h}px → {seg} 段 | " +
-                           $"有效长 {axisLenPx}px ppu={ppu:0.##} 世界段长={_segLen:0.###}u 缩放={scale:0.##}");
+                           $"有效长 {axisLenPx}px ppu={ppu:0.##} 世界总长={localLen * scale:0.##}u " +
+                           $"段长={_segLen:0.###}u 中段宽≈{_segHalf[seg / 2] * 2f:0.##}u 缩放={scale:0.##}");
     }
 
     /// <summary>
@@ -355,7 +360,7 @@ public class TailRig : MonoBehaviour
     /// 扫不动（贴图不可读）就退回"矩形带"。
     /// </summary>
     private void BuildProfileFromPixels(Sprite sp, Texture2D tex, int x0, int y0, int w, int h,
-                                        float ppu, int n, ref int firstCol, ref int lastCol)
+                                        float ppu, int n, float scale, ref int firstCol, ref int lastCol)
     {
         Color32[] px = null;
         try { px = tex.GetPixels32(); } catch { px = null; }
@@ -364,7 +369,7 @@ public class TailRig : MonoBehaviour
 
         if (px == null)
         {
-            BuildFallbackProfile(sp, w, h, ppu, n);
+            BuildFallbackProfile(sp, w, h, ppu, n, scale);
             firstCol = 0;
             lastCol = w - 1;
             return;
@@ -415,21 +420,23 @@ public class TailRig : MonoBehaviour
                 hh = Mathf.Max(0.5f, (maxY - minY + 1) * 0.5f);
             }
 
-            _segCenter[i] = (cy - pivotY) / ppu;
-            _segHalf[i] = hh / ppu;
+            // ★ 顶点用世界坐标算，这里必须换算成世界单位（像素/ppu × 世界缩放）
+            _segCenter[i] = (cy - pivotY) / ppu * scale;
+            _segHalf[i] = hh / ppu * scale;
         }
     }
 
     /// <summary>贴图不可读时的退路：等宽矩形带（没有粗细变化，但至少位置对）</summary>
-    private void BuildFallbackProfile(Sprite sp, int w, int h, float ppu, int n)
+    private void BuildFallbackProfile(Sprite sp, int w, int h, float ppu, int n, float scale)
     {
         float pivotY = sp.pivot.y;
         float cy = h * 0.5f;
         float hh = h * 0.5f;
         for (int i = 0; i < n; i++)
         {
-            _segCenter[i] = (cy - pivotY) / ppu;
-            _segHalf[i] = hh / ppu;
+            // ★ 顶点用世界坐标算，这里必须换算成世界单位（像素/ppu × 世界缩放）
+            _segCenter[i] = (cy - pivotY) / ppu * scale;
+            _segHalf[i] = hh / ppu * scale;
         }
         Plugin.Log.LogWarning("[STEMFishDLC] 尾巴贴图不可读，退回矩形带（会没有粗细变化）");
     }
