@@ -2,6 +2,37 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.24.3 — 2026-11-27
+
+- **尾巴的物理参数全部对齐 SkinSyncMod 的 `TailDeformConfig..cctor`**。
+  0.24.1/0.24.2 那套数值是凭感觉填的，反汇编出真实默认值后发现差得很离谱：
+
+  | 参数 | 参考实现 | 我之前写的 | 后果 |
+  |---|---|---|---|
+  | `GravityY` | **-1.2** | -6 | 尾巴被拽得下垂，"萎焉" |
+  | `WindAmp` | **0.012** | 0.35 | 风力大 29 倍，尾梢乱抖 |
+  | `SpeedDisturb` | **0.005** | 0.05 | 跑起来抖得更凶 |
+  | `ConstraintIters` | **6** | 3 | 段长约束不足 → 一节一节 |
+  | `MaxBendDeg` | **18°** | 26° | 关节折角更明显 |
+  | `AnchorFollow` | **1** | 0.45 | 根部松脱，整条尾巴挂在半空甩不起来 |
+  | `MaxStep` | **0.15** | 0.6 | 单帧位移太大，动起来一顿一顿 |
+  | `Smoothness` | **0.55** | 0.5 | 接近 |
+  | `Damping` | **0.45** | 0.35 | 接近 |
+
+- 补回三个之前漏掉的机制：
+  - **`SpeedDamping`（0.05）**：速度越快阻尼越大，
+    `damp = Clamp01(Damping + Min(|vx| × SpeedDamping, 0.5))`
+  - **`Stiffness`（1）**：段长约束用软系数 `pos -= d × (stiffness × (len - segLen) / len)`，
+    不再是硬拉
+  - **`FrontGuard`（0.05）**：尾巴不许窜到身体前面，越界的骨点沿 dir 投影拉回后方
+- **修：骨链每帧被重建**。`Sync()` 原来用 `sprite.GetInstanceID()` 判断要不要重建，
+  而 FishSkin 每帧校正贴图时会生成新的 Sprite 实例 → 每帧 Rebuild → 骨链反复重置成直线，
+  表现就是"隔一会儿动一下、动起来很机械"。现在用 `名字 + rect + 段数` 当 key。
+- 风力改成**累积相位**（`_windPhase += dt × (WindFreq + |vx| × 0.15)`），
+  幅度用 `Lerp` 平滑到目标值（原版 `smoothBaseAmp`）
+- 新增配置：`TailFlowSpeedDamp`、`TailFlowStiffness`、`TailFlowAnchor`、
+  `TailFlowMaxStep`、`TailFlowFrontGuard`
+
 ## 0.24.2 — 2026-11-27
 
 - **修：尾巴被拉成一条横穿地图的长线**。两个单位错误叠在一起：

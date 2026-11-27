@@ -38,14 +38,26 @@ namespace STEMFishDLC;
 
 public static class TailFlow
 {
+    // ★ 默认值全部取自 SkinSyncMod 的 TailDeformConfig..cctor（反汇编出来的真实值）：
+    //   Segments=10 ConstraintIters=6 Damping=0.45 SpeedDamping=0.05 Stiffness=1
+    //   Gravity=(0,-1.2) WindFreq=1.2 WindAmp=0.012 SpeedDisturb=0.005
+    //   MaxBendDeg=18 AnchorFollow=1 Smoothness=0.55 FrontGuard=1 MaxStep=0.15 MaxFixedDt=0.02
+    //   上一版我凭感觉填的值偏差很大（重力 5 倍、风力 29 倍、迭代少一半），
+    //   表现就是"萎焉下垂 + 机械抖动 + 一节一节"。
     public static bool Enabled = true;
     public static int Segments = 10;
-    public static float WindAmp = 0.35f;
-    public static float WindFreq = 1.6f;
-    public static float Gravity = 6f;
-    public static float Damping = 0.35f;
-    public static float Smoothness = 0.5f;
-    public static float MaxBendDeg = 26f;
+    public static float WindAmp = 0.012f;
+    public static float SpeedDisturb = 0.005f;
+    public static float WindFreq = 1.2f;
+    public static float Gravity = 1.2f;
+    public static float Damping = 0.45f;
+    public static float SpeedDamping = 0.05f;
+    public static float Stiffness = 1f;
+    public static float Smoothness = 0.55f;
+    public static float MaxBendDeg = 18f;
+    public static float AnchorFollow = 1f;
+    public static float MaxStep = 0.15f;
+    public static bool FrontGuard = true;
 
     private static TailRig _rig;
     private static bool _noTailWarned;
@@ -63,14 +75,24 @@ public static class TailFlow
                 "风的幅度（0 = 只有惯性和重力，0.6 已经很飘）").Value, 0f, 2f);
             WindFreq = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowFreq", 1.6f,
                 "风的频率（越大抖得越快）").Value, 0.2f, 6f);
-            Gravity = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowGravity", 6f,
-                "向下的重力（越大尾梢垂得越低）").Value, 0f, 30f);
-            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.35f,
-                "速度阻尼（越大越黏、停得越快；0.1 很飘）").Value, 0f, 0.95f);
-            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmooth", 0.5f,
-                "骨链平滑（0 = 不平滑、更硬；0.9 很顺滑但会拖）").Value, 0f, 0.95f);
-            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBend", 26f,
-                "相邻两段的最大夹角（度）—— 越小尾巴越硬，不会对折").Value, 5f, 80f);
+            Gravity = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowGravity", 1.2f,
+                "向下的重力（原版 1.2，越大尾梢垂得越低）").Value, 0f, 20f);
+            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.45f,
+                "速度阻尼（原版 0.45，越大越黏）").Value, 0f, 0.95f);
+            SpeedDamping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSpeedDamp", 0.05f,
+                "速度越快阻尼越小（原版 0.05）").Value, 0f, 0.3f);
+            Stiffness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowStiffness", 1f,
+                "段长约束强度（1 = 硬约束，越小越软）").Value, 0.1f, 1f);
+            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmooth", 0.55f,
+                "骨链平滑（原版 0.55，越大越顺滑但会拖）").Value, 0f, 0.95f);
+            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBend", 18f,
+                "相邻两段的最大夹角（度）—— 原版 18，越小尾巴越硬").Value, 5f, 80f);
+            AnchorFollow = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAnchor", 1f,
+                "第一骨点跟随根部的强度（1 = 完全跟随）").Value, 0.05f, 1f);
+            MaxStep = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxStep", 0.15f,
+                "单帧最大位移（原版 0.15，太大动起来会一顿一顿）").Value, 0.02f, 1f);
+            FrontGuard = plugin.Config.Bind("Cosmetic", "TailFlowFrontGuard", true,
+                "防止尾巴甩到身体前面（原版开）").Value;
         }
         catch { }
     }
@@ -163,9 +185,11 @@ public class TailRig : MonoBehaviour
     private int[] _tris;
 
     private float _segLen;
+    private float _windPhase;
+    private float _smoothBaseAmp;
     private Vector2 _dir = Vector2.right;
     private bool _physicsInited;
-    private int _cachedSpriteId;
+    private string _cachedKey;
     private bool _restored;
 
     public bool Alive => this != null && _sr != null;
@@ -271,8 +295,15 @@ public class TailRig : MonoBehaviour
         if (sp == null) return;
 
         int seg = Mathf.Max(2, TailFlow.Segments);
-        bool need = sp.GetInstanceID() != _cachedSpriteId ||
-                    _bonePos == null || _bonePos.Length != seg + 1;
+
+        // ★ key 用 "名字 + rect + 段数"，不用 GetInstanceID：
+        //   FishSkin 每帧校正角色贴图，可能每帧 generate 一个新的 Sprite 实例，
+        //   用实例 ID 判断会导致**每帧重建**——骨链被反复重置成一条直线，
+        //   表现就是"隔一会儿动一下、动起来一顿一顿"。
+        var rc = sp.rect;
+        string key = sp.name + "|" + (int)rc.x + "," + (int)rc.y + "," +
+                     (int)rc.width + "x" + (int)rc.height + "|" + seg;
+        bool need = key != _cachedKey || _bonePos == null || _bonePos.Length != seg + 1;
         if (need) Rebuild(sp, seg);
 
         if (_sr.enabled) _sr.enabled = false;
@@ -289,7 +320,9 @@ public class TailRig : MonoBehaviour
     // ======================================================================
     private void Rebuild(Sprite sp, int seg)
     {
-        _cachedSpriteId = sp.GetInstanceID();
+        var rr = sp.rect;
+        _cachedKey = sp.name + "|" + (int)rr.x + "," + (int)rr.y + "," +
+                     (int)rr.width + "x" + (int)rr.height + "|" + seg;
 
         var tex = sp.texture;
         if (tex == null) return;
@@ -477,7 +510,6 @@ public class TailRig : MonoBehaviour
 
         int count = _bonePos.Length;
 
-        // ---- 物理参数 ----
         float speed = 0f;
         try
         {
@@ -485,17 +517,30 @@ public class TailRig : MonoBehaviour
         }
         catch { }
 
+        // ---- 物理参数（全部对齐 SkinSyncMod 的 TailDeformConfig） ----
         Vector2 gravity = new Vector2(0f, -TailFlow.Gravity);
-        float damp = Mathf.Clamp01(TailFlow.Damping);
+
+        // 速度越快阻尼越大：原版 damp = Clamp01(Damping + Min(|vx| * SpeedDamping, 0.5))
+        float damp = Mathf.Clamp01(TailFlow.Damping + Mathf.Min(speed * TailFlow.SpeedDamping, 0.5f));
+        float keep = 1f - damp;
+
         float maxBend = Mathf.Max(0f, TailFlow.MaxBendDeg) * Mathf.Deg2Rad;
-        float maxStep = 0.6f;
+        float maxStep = Mathf.Max(0.02f, TailFlow.MaxStep);
         float smooth = Mathf.Clamp(TailFlow.Smoothness, 0f, 0.99f);
-        float anchorFollow = 0.45f;
+        float anchorFollow = Mathf.Clamp01(TailFlow.AnchorFollow);
+        float stiffness = Mathf.Clamp01(TailFlow.Stiffness);
+        int iters = 6;                                   // 原版 ConstraintIters
 
-        float windPhase = Time.time * TailFlow.WindFreq;
-        float windAmp = TailFlow.WindAmp + speed * 0.05f;
+        // 风力：频率和幅度都随速度涨（原版 WindFreq + speed*0.15 / WindAmp + speed*SpeedDisturb）
+        float windFreq = TailFlow.WindFreq + speed * 0.15f;
+        float windTarget = TailFlow.WindAmp + speed * TailFlow.SpeedDisturb;
+        _windPhase += dt * windFreq;
+        _smoothBaseAmp = Mathf.Lerp(_smoothBaseAmp, windTarget, 0.2f);
+        float windAmp = _smoothBaseAmp;
 
-        // ---- 根点 + 第一个骨点软跟随 ----
+        // ---- 根点 + 第一个骨点跟随 ----
+        // 原版 AnchorFollow = 1：第一个骨点直接钉在 root + dir*segLen 上，
+        // 之前我给 0.45，根部一直是松的，整条尾巴"挂"在半空甩不起来。
         _bonePos[0] = root;
         _bonePrev[0] = root;
 
@@ -504,7 +549,7 @@ public class TailRig : MonoBehaviour
         _bonePrev[1] = Vector2.Lerp(_bonePrev[1], anchor, anchorFollow);
 
         // ---- 子步积分 ----
-        float maxFixedDt = 1f / 50f;
+        float maxFixedDt = 0.02f;                        // 原版 MaxFixedDt
         int steps = Mathf.Max(1, Mathf.CeilToInt(dt / maxFixedDt));
         float h = dt / steps;
 
@@ -512,7 +557,7 @@ public class TailRig : MonoBehaviour
         {
             for (int i = 2; i < count; i++)
             {
-                Vector2 vel = (_bonePos[i] - _bonePrev[i]) * (1f - damp);
+                Vector2 vel = (_bonePos[i] - _bonePrev[i]) * keep;
 
                 if (vel.magnitude > maxStep) vel = vel.normalized * maxStep;
 
@@ -522,7 +567,7 @@ public class TailRig : MonoBehaviour
 
                 float k = i / (float)(count - 1);
                 float amp = windAmp * k * k;                  // 越靠尾梢越飘
-                float wave = Mathf.Sin(windPhase + k * Mathf.PI * 2f) * amp;
+                float wave = Mathf.Sin(_windPhase + k * Mathf.PI * 2f) * amp;
                 next += Vector2.up * wave;
 
                 Vector2 d = next - _bonePos[i];
@@ -531,35 +576,51 @@ public class TailRig : MonoBehaviour
                 _bonePos[i] = next;
             }
 
-            // ---- 约束 1：相邻两段最大夹角 ----
-            for (int i = 1; i < count - 1; i++)
+            for (int it = 0; it < iters; it++)
             {
-                Vector2 d1 = _bonePos[i] - _bonePos[i - 1];
-                Vector2 d2 = _bonePos[i + 1] - _bonePos[i];
-                if (d1.sqrMagnitude < 1e-6f || d2.sqrMagnitude < 1e-6f) continue;
-
-                float a1 = Mathf.Atan2(d1.y, d1.x) * Mathf.Rad2Deg;
-                float a2 = Mathf.Atan2(d2.y, d2.x) * Mathf.Rad2Deg;
-                float delta = Mathf.DeltaAngle(a1, a2) * Mathf.Deg2Rad;
-
-                if (Mathf.Abs(delta) > maxBend)
+                // ---- 约束 1：相邻两段最大夹角 ----
+                for (int i = 1; i < count - 1; i++)
                 {
-                    float clamped = Mathf.Clamp(delta, -maxBend, maxBend);
-                    float cos = Mathf.Cos(clamped), sin = Mathf.Sin(clamped);
-                    Vector2 u = d1.normalized;
-                    Vector2 rot = new Vector2(u.x * cos - u.y * sin, u.x * sin + u.y * cos);
-                    _bonePos[i + 1] = _bonePos[i] + rot * d2.magnitude;
+                    Vector2 d1 = _bonePos[i] - _bonePos[i - 1];
+                    Vector2 d2 = _bonePos[i + 1] - _bonePos[i];
+                    if (d1.sqrMagnitude < 1e-6f || d2.sqrMagnitude < 1e-6f) continue;
+
+                    float a1 = Mathf.Atan2(d1.y, d1.x) * Mathf.Rad2Deg;
+                    float a2 = Mathf.Atan2(d2.y, d2.x) * Mathf.Rad2Deg;
+                    float delta = Mathf.DeltaAngle(a1, a2) * Mathf.Deg2Rad;
+
+                    if (Mathf.Abs(delta) > maxBend)
+                    {
+                        float clamped = Mathf.Clamp(delta, -maxBend, maxBend);
+                        float cos = Mathf.Cos(clamped), sin = Mathf.Sin(clamped);
+                        Vector2 u = d1.normalized;
+                        Vector2 rot = new Vector2(u.x * cos - u.y * sin, u.x * sin + u.y * cos);
+                        _bonePos[i + 1] = _bonePos[i] + rot * d2.magnitude;
+                    }
+                }
+
+                // ---- 约束 2：段长（stiffness 控制软硬） ----
+                for (int i = 1; i < count; i++)
+                {
+                    Vector2 d = _bonePos[i] - _bonePos[i - 1];
+                    float len = d.magnitude;
+                    if (len < 1e-5f) continue;
+                    _bonePos[i] -= d * (stiffness * (len - _segLen) / len);
                 }
             }
 
-            // ---- 约束 2：段长（只拉后一个点） ----
-            for (int i = 1; i < count; i++)
+            // ---- 约束 3：尾巴不许窜到身体前面（原版 FrontGuard） ----
+            if (TailFlow.FrontGuard)
             {
-                Vector2 d = _bonePos[i] - _bonePos[i - 1];
-                float len = d.magnitude;
-                if (len < 1e-5f) continue;
-                float corr = len - _segLen;
-                _bonePos[i] -= d / len * corr;
+                float margin = 0.05f;
+                for (int i = 2; i < count; i++)
+                {
+                    Vector2 v = _bonePos[i] - root;
+                    float dot = Vector2.Dot(v, _dir);
+                    if (dot >= -margin) continue;
+                    Vector2 perp = v - _dir * dot;
+                    _bonePos[i] = root + _dir * (-margin) + perp;
+                }
             }
         }
 
