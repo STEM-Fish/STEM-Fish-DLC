@@ -9,7 +9,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>STEMFishDLC</AssemblyName>
     <Product>STEM Fish DLC</Product>
-    <Version>0.25.0</Version>
+    <Version>0.25.1</Version>
     <LangVersion>latest</LangVersion>
     <RootNamespace>STEMFishDLC</RootNamespace>
 

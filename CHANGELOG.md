@@ -2,6 +2,19 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.25.1 — 2026-11-28
+
+- **修：换弹音效完全没有声音**。`Sfx.Dir()` 把 `Path.GetDirectoryName(dll)` 当成音效根目录，
+  于是去 `BepInEx/plugins/sfx` 找文件 —— 实际路径是 `BepInEx/plugins/STEMFishDLC/sfx`。
+  现在把四个可能位置都试一遍（插件子目录 / 同级 sfx / `Paths.PluginPath` / `GameRootPath`），
+  取第一个真实存在的；都找不到会打一条 `找不到音效目录，试过: …`。
+  另外去掉了"只尝试一次"的缓存，文件后来才就位也能补上。
+- **修：激光偶尔从枪托那头射出**。`Transform.right` **只吃 rotation、不吃 scale**，
+  而 `Body.SwitchDir` 是用 `localScale.x = -1` 表示朝向的 —— 所以镜像时枪管视觉朝左、
+  `right` 却仍然指向 +X。现在乘上 `Mathf.Sign(barrel.lossyScale.x)` 把方向掰回来。
+- **激光加粗 + 双层**：核心线默认宽度 0.018 → **0.04**（配置键改名 `LaserSightWidthV2`），
+  外面再叠一条三倍宽、三分之一不透明度的光晕线，亮背景上也能看见。
+
 ## 0.25.0 — 2026-11-28
 
 - **急速下坠：顶部音乐按钮**。屏幕顶部中央一个音符按钮（`♪`），点开是原版曲库的曲目列表，

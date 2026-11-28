@@ -10,7 +10,7 @@
 
 说明：是非官方MOD，此角色设定并不是 Casualties: Unknown 或 Gunsaw 原设定之中的。设定版权归开发者所有。但这不影响你可以免费获得这个 MOD 进行游玩，并可以任意进行开源的二次开发。详见 License。
 
-当前版本：**0.25.0**（插件 GUID：`com.stemfish.dlc`）
+当前版本：**0.25.1**（插件 GUID：`com.stemfish.dlc`）
 
 ---
 
@@ -113,7 +113,7 @@ Casualties Unknown/
 └── winhttp.dll / doorstop_config.ini （BepInEx 自带）
 ```
 
-3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.25.0 =====` 即成功。
+3. 启动游戏。日志里出现 `[STEMFishDLC] ===== 加载 v0.25.1 =====` 即成功。
 
 > 联机：可与 **Casualties: Together v5.4.0**（KrokMP 的续作）共存。
 > 进游戏前建议先在 `Settings > General` 里确认联机开关状态。

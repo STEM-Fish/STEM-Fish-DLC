@@ -20,10 +20,11 @@ public static class LaserSight
 {
     public static bool Enabled = true;
     public static float Range = 40f;
-    public static float Width = 0.018f;
+    public static float Width = 0.040f;
     public static Color BeamColor = new Color(1f, 0.16f, 0.12f, 0.55f);
 
     private static LineRenderer _line;
+    private static LineRenderer _glow;
     private static GameObject _go;
     private static Material _mat;
     private static GunScript _gun;
@@ -39,8 +40,8 @@ public static class LaserSight
                 "MDRZ9 的红色激光束（纯视觉，不影响命中）").Value;
             Range = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "LaserSightRange", 40f,
                 "激光长度上限（世界单位）").Value, 3f, 120f);
-            Width = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "LaserSightWidth", 0.018f,
-                "激光粗细（世界单位）").Value, 0.004f, 0.1f);
+            Width = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "LaserSightWidthV2", 0.040f,
+                "激光粗细（世界单位）").Value, 0.006f, 0.2f);
             BeamColor.a = Mathf.Clamp01(plugin.Config.Bind("Cosmetic", "LaserSightAlpha", 0.55f,
                 "激光不透明度（0~1）").Value);
         }
@@ -69,6 +70,14 @@ public static class LaserSight
 
             Vector2 origin = gun.barrel.position;
             Vector2 dir = gun.barrel.right;
+
+            // ★ Transform.right 只吃 rotation，**不吃 scale** —— 身体用
+            //   localScale.x = -1 镜像时它仍然指向 +X，激光就从枪托那头射出去了。
+            //   用 lossyScale 的符号把方向掰回来。
+            float sgn = Mathf.Sign(gun.barrel.lossyScale.x);
+            if (Mathf.Approximately(sgn, 0f)) sgn = 1f;
+            dir *= sgn;
+
             if (dir.sqrMagnitude < 1e-4f) { Hide(); return; }
             dir.Normalize();
 
@@ -86,12 +95,29 @@ public static class LaserSight
             Active = true;
 
             _go.SetActive(true);
-            _line.SetPosition(0, new Vector3(origin.x, origin.y, 0f));
-            _line.SetPosition(1, new Vector3(end.x, end.y, 0f));
+
+            var a = new Vector3(origin.x, origin.y, 0f);
+            var b = new Vector3(end.x, end.y, 0f);
+
+            // 核心线
+            _line.SetPosition(0, a);
+            _line.SetPosition(1, b);
             _line.startColor = BeamColor;
-            _line.endColor = new Color(BeamColor.r, BeamColor.g, BeamColor.b, BeamColor.a * 0.25f);
+            _line.endColor = new Color(BeamColor.r, BeamColor.g, BeamColor.b, BeamColor.a * 0.35f);
             _line.startWidth = Width;
-            _line.endWidth = Width * 0.6f;
+            _line.endWidth = Width * 0.7f;
+
+            // 外层光晕：宽三倍、淡一档，让激光在亮背景上也能看见
+            if (_glow != null)
+            {
+                _glow.SetPosition(0, a);
+                _glow.SetPosition(1, b);
+                var gc = new Color(BeamColor.r, BeamColor.g * 0.5f, BeamColor.b * 0.4f, BeamColor.a * 0.30f);
+                _glow.startColor = gc;
+                _glow.endColor = new Color(gc.r, gc.g, gc.b, gc.a * 0.2f);
+                _glow.startWidth = Width * 3.2f;
+                _glow.endWidth = Width * 1.8f;
+            }
 
             if (_gun != gun)
             {
@@ -125,7 +151,7 @@ public static class LaserSight
             _mat = sh != null ? new Material(sh) : null;
             if (_mat != null) _line.material = _mat;
 
-            _line.sortingOrder = 26000;
+            _line.sortingOrder = 26001;
             _line.receiveShadows = false;
             _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _line.startColor = BeamColor;
@@ -133,12 +159,24 @@ public static class LaserSight
             _line.startWidth = Width;
             _line.endWidth = Width;
 
+            // 光晕（同一条 GameObject 上加第二个 LineRenderer，排序低一层）
+            _glow = _go.AddComponent<LineRenderer>();
+            _glow.positionCount = 2;
+            _glow.useWorldSpace = true;
+            _glow.numCapVertices = 2;
+            _glow.alignment = LineAlignment.View;
+            if (_mat != null) _glow.material = _mat;
+            _glow.sortingOrder = 26000;
+            _glow.receiveShadows = false;
+            _glow.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
             _go.SetActive(false);
         }
         catch (Exception e)
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] 激光束创建失败: {e.Message}");
             _line = null;
+            _glow = null;
         }
     }
 

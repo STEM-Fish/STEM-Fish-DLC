@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -24,7 +25,6 @@ public static class Sfx
 
     private static AudioSource _src;
     private static AudioClip _reloadOut, _reloadIn;
-    private static bool _tried;
 
     public static void Init(Plugin plugin)
     {
@@ -46,13 +46,8 @@ public static class Sfx
         if (!Enabled) return;
         try
         {
-            if (!_tried)
-            {
-                _tried = true;
-                _reloadOut = LoadWav("reload_out.wav", "sfx_reload_out");
-                _reloadIn = LoadWav("reload_in.wav", "sfx_reload_in");
-            }
-
+            // 不做"只试一次"的缓存：文件是随插件拷进来的，
+            // 万一第一次因为路径/读写时序没读到，后面每次还能再试（File.Exists 很便宜）
             if (clip == null) clip = LoadWav(file, "sfx_" + name);
             if (clip == null) return;
 
@@ -75,16 +70,36 @@ public static class Sfx
 
     private static string Dir()
     {
+        // ★ 插件的 dll 就放在 BepInEx/plugins/ 下，而 sfx 在
+        //   BepInEx/plugins/STEMFishDLC/sfx —— 所以不能直接拼 dll 目录 + "sfx"，
+        //   那样找的是 plugins/sfx（不存在），音效就静默不播。
+        //   这里把所有可能的位置都试一遍，取第一个真实存在的。
+        var cands = new List<string>();
         try
         {
-            var asm = Assembly.GetExecutingAssembly();
-            var p = Path.GetDirectoryName(asm.Location);
-            if (!string.IsNullOrEmpty(p)) return Path.Combine(p, "sfx");
+            var p = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (!string.IsNullOrEmpty(p))
+            {
+                cands.Add(Path.Combine(p, "STEMFishDLC", "sfx"));
+                cands.Add(Path.Combine(p, "sfx"));
+            }
         }
         catch { }
-        try { return Path.Combine(BepInEx.Paths.PluginPath, "STEMFishDLC", "sfx"); } catch { }
+        try { cands.Add(Path.Combine(BepInEx.Paths.PluginPath, "STEMFishDLC", "sfx")); } catch { }
+        try { cands.Add(Path.Combine(BepInEx.Paths.GameRootPath, "BepInEx", "plugins", "STEMFishDLC", "sfx")); } catch { }
+
+        for (int i = 0; i < cands.Count; i++)
+            if (Directory.Exists(cands[i])) return cands[i];
+
+        if (!_pathWarned)
+        {
+            _pathWarned = true;
+            Plugin.Log.LogWarning("[STEMFishDLC] 找不到音效目录，试过: " + string.Join(" | ", cands));
+        }
         return null;
     }
+
+    private static bool _pathWarned;
 
     // ---- 最小 WAV 解析：只认 PCM 16-bit ----
     private static AudioClip LoadWav(string file, string name)
