@@ -32,6 +32,8 @@ public static class Jukebox
 
     private const float BtnSize = 48f;
     private const float RowW = 240f;
+    private const float PanelW = 300f;
+    private const float PanelH = 212f;
     private const float RowH = 30f;
 
     private static readonly string[] Wanted = { "pathway", "chase", "run for", "ascent" };
@@ -304,42 +306,123 @@ public static class Jukebox
         Stretch(_btnLabel.rectTransform);
     }
 
-    // ---- 弹出列表 ----
+    // ---- 弹出列表：固定小窗 + 滚动条 ----
     private static void BuildList()
     {
-        _listGo = NewRect("MusicList", _root.transform, RowW + 8f, 0f);
+        float pad = 6f;
+        const float sbW = 10f;
+
+        _listGo = NewRect("MusicList", _root.transform, PanelW, PanelH);
         var lrt = (RectTransform)_listGo.transform;
         lrt.anchorMin = new Vector2(0.5f, 1f);
         lrt.anchorMax = new Vector2(0.5f, 1f);
         lrt.pivot = new Vector2(0.5f, 1f);
         lrt.anchoredPosition = new Vector2(OffsetX, OffsetY - BtnSize - 8f);
 
-        // 底板（VerticalLayoutGroup 会叠在它上面）
-        var bgImg = _listGo.AddComponent<Image>();
-        bgImg.color = new Color(0.03f, 0.04f, 0.05f, 0.95f);
-        bgImg.raycastTarget = true;          // 吃掉点击，别透到游戏里
+        var bg = _listGo.AddComponent<Image>();
+        bg.color = new Color(0.03f, 0.04f, 0.05f, 0.96f);
+        bg.raycastTarget = true;            // 吃掉点击，别透到游戏里
 
         var outline = _listGo.AddComponent<Outline>();
         outline.effectColor = new Color(BorderColor.r, BorderColor.g, BorderColor.b, 0.75f);
         outline.effectDistance = new Vector2(2f, -2f);
 
-        var lv = _listGo.AddComponent<VerticalLayoutGroup>();
-        lv.padding = new RectOffset(4, 4, 4, 4);
+        // ---- ScrollRect 容器（左侧内容区） ----
+        float viewW = PanelW - pad * 2f - sbW;
+        float viewH = PanelH - pad * 2f;
+
+        var scrollGo = NewRect("Scroll", _listGo.transform, viewW, viewH);
+        var srt = (RectTransform)scrollGo.transform;
+        srt.anchorMin = new Vector2(0f, 1f);
+        srt.anchorMax = new Vector2(0f, 1f);
+        srt.pivot = new Vector2(0f, 1f);
+        srt.anchoredPosition = new Vector2(pad, -pad);
+
+        var scroll = scrollGo.AddComponent<ScrollRect>();
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 32f;
+        scroll.inertia = false;
+
+        // Viewport：RectMask2D 比 Mask 轻，也不需要 Image 当模板
+        var vp = NewRect("Viewport", scrollGo.transform, viewW, viewH);
+        var vrt = (RectTransform)vp.transform;
+        vrt.anchorMin = Vector2.zero;
+        vrt.anchorMax = Vector2.one;
+        vrt.offsetMin = Vector2.zero;
+        vrt.offsetMax = Vector2.zero;
+        vp.AddComponent<RectMask2D>();
+
+        // Content：顶部对齐，高度由 ContentSizeFitter 撑开
+        var content = NewRect("Content", vp.transform, viewW, 0f);
+        var crt = (RectTransform)content.transform;
+        crt.anchorMin = new Vector2(0f, 1f);
+        crt.anchorMax = new Vector2(1f, 1f);
+        crt.pivot = new Vector2(0.5f, 1f);
+        crt.anchoredPosition = Vector2.zero;
+        crt.sizeDelta = new Vector2(0f, 0f);
+
+        var lv = content.AddComponent<VerticalLayoutGroup>();
+        lv.padding = new RectOffset(0, 0, 0, 4);
         lv.spacing = 3f;
         lv.childControlHeight = false;
-        lv.childControlWidth = false;
+        lv.childControlWidth = true;
         lv.childForceExpandHeight = false;
-        lv.childForceExpandWidth = false;
-        lv.childAlignment = TextAnchor.UpperCenter;
+        lv.childForceExpandWidth = true;
+        lv.childAlignment = TextAnchor.UpperLeft;
 
-        var fitter = _listGo.AddComponent<ContentSizeFitter>();
+        var fitter = content.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+        // ---- Scrollbar ----
+        var sbGo = NewRect("Scrollbar", _listGo.transform, sbW, viewH);
+        var sbrt = (RectTransform)sbGo.transform;
+        sbrt.anchorMin = new Vector2(1f, 1f);
+        sbrt.anchorMax = new Vector2(1f, 1f);
+        sbrt.pivot = new Vector2(1f, 1f);
+        sbrt.anchoredPosition = new Vector2(-pad + 2f, -pad);
+
+        var sbBg = sbGo.AddComponent<Image>();
+        sbBg.color = new Color(0.10f, 0.13f, 0.16f, 1f);
+        sbBg.raycastTarget = true;
+
+        var sb = sbGo.AddComponent<Scrollbar>();
+        sb.direction = Scrollbar.Direction.BottomToTop;
+
+        var area = NewRect("SlidingArea", sbGo.transform, 0f, 0f);
+        var art = (RectTransform)area.transform;
+        art.anchorMin = Vector2.zero;
+        art.anchorMax = Vector2.one;
+        art.offsetMin = Vector2.zero;
+        art.offsetMax = Vector2.zero;
+
+        var handle = NewRect("Handle", area.transform, 0f, 0f);
+        var hrt = (RectTransform)handle.transform;
+        hrt.anchorMin = Vector2.zero;
+        hrt.anchorMax = Vector2.one;
+        hrt.offsetMin = Vector2.zero;
+        hrt.offsetMax = Vector2.zero;
+        var hImg = handle.AddComponent<Image>();
+        hImg.color = new Color(BorderColor.r, BorderColor.g, BorderColor.b, 0.80f);
+
+        sb.handleRect = hrt;
+        sb.targetGraphic = hImg;
+        sb.size = 0.35f;
+
+        scroll.viewport = vrt;
+        scroll.content = crt;
+        scroll.verticalScrollbar = sb;
+        scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+        scroll.verticalScrollbarSpacing = 0f;
+        scroll.verticalNormalizedPosition = 1f;
+
+        // ---- 每一行 ----
         for (int i = 0; i < _clips.Count; i++)
         {
             int idx = i;
 
-            var row = NewRect("Row" + i, _listGo.transform, RowW, RowH);
+            var row = NewRect("Row" + i, content.transform, viewW, RowH);
             var rim = row.AddComponent<Image>();
             rim.color = RowBg;
             rim.raycastTarget = true;
@@ -354,7 +437,7 @@ public static class Jukebox
             rbtn.onClick.AddListener(() => Play(idx));
 
             string label = _names[i];
-            if (label.Length > 30) label = label.Substring(0, 30);
+            if (label.Length > 34) label = label.Substring(0, 34);
             var txt = NewText("T", row.transform, label, 15f, Body);
             var trt = txt.rectTransform;
             trt.anchorMin = Vector2.zero;
