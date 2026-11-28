@@ -2,6 +2,18 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.25.4 — 2026-11-28
+
+- **急速下坠：静音"遭遇/战斗"时的那层紧张音**。反汇编确认原版**没有**"遇敌切歌"
+  这套逻辑，打架时听到的是 `MusicManager.critSource` / `critSourceUnc` 两个常驻 drone，
+  由 `body.heartRate > 5` 触发、音量 = `droneVolume × 系数` 每帧渐变。
+  做法是 patch `MusicManager.Update`，急速下坠下把 `droneVolume` 临时改成 0
+  （Update 内部算出来的目标音量全是 0，会平滑淡出而不是硬停），postfix 再还原字段。
+  - **棘背长老（ElderThornback）在场时自动保留**：判断依据是 `Body.horrifiedLevel > 0`
+    —— 长老在 Update 里拉这个值，离开/死亡会清零，比 FindObjectOfType 便宜得多
+  - 开关：`[Freefall] MuteCombatDrone`（默认开）
+- **换弹音效音量 0.65 → 0.90**（键改名 `ReloadSfxVolumeV2`，绕开 cfg 里存的旧值）。
+
 ## 0.25.3 — 2026-11-28
 
 - **换弹音效换成原声素材**（`sfx/reload.mp3`，作者提供，48KB）。

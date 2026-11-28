@@ -22,7 +22,7 @@ namespace STEMFishDLC;
 public static class Sfx
 {
     public static bool Enabled = true;
-    public static float Volume = 0.65f;
+    public static float Volume = 0.90f;
 
     private static AudioSource _src;
     private static AudioClip _reloadOut, _reloadIn;
@@ -35,8 +35,8 @@ public static class Sfx
         {
             Enabled = plugin.Config.Bind("Audio", "ReloadSfx", true,
                 "换弹音效（卸弹匣 + 插弹匣拉栓）").Value;
-            Volume = Mathf.Clamp(plugin.Config.Bind("Audio", "ReloadSfxVolume", 0.65f,
-                "换弹音效音量（0~1）").Value, 0f, 1f);
+            Volume = Mathf.Clamp(plugin.Config.Bind("Audio", "ReloadSfxVolumeV2", 0.90f,
+                "换弹音效音量（0~1；0.9 已经接近原声，觉得吵就往下调）").Value, 0f, 1f);
         }
         catch { }
     }

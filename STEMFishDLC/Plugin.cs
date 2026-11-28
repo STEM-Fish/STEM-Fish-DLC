@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.25.3")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.25.4")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.25.3 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.25.4 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -102,6 +102,7 @@ public class Plugin : BaseUnityPlugin
         Jukebox.Init(this);         // 急速下坠：顶部音乐按钮（原版曲库）
         Sfx.Init(this);             // 换弹音效（自带 wav）
         LaserSight.Init(this);      // MDRZ9 红色激光束（纯视觉）
+        FreefallMusic.Init(this);   // 急速下坠：静音战斗紧张音
         GunFx.Init(this);           // 射击打击感（枪口闪光 + 命中粒子）
         FishSkin.Init(this);        // 内置皮肤替换（不依赖 SkinSyncMod，隔离模式下也保留外观）
         TailFlow.Init(this);        // 尾巴分段飘动（在皮肤替换之后）
