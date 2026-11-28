@@ -30,7 +30,7 @@ public static class Jukebox
     public static float OffsetX = 0f;
     public static float OffsetY = -28f;
 
-    private const float BtnSize = 44f;
+    private const float BtnSize = 48f;
     private const float RowW = 240f;
     private const float RowH = 30f;
 
@@ -50,6 +50,7 @@ public static class Jukebox
     private static WorldGeneration _lastWorld;
 
     private static readonly Color PanelBg = new Color(0.05f, 0.06f, 0.08f, 0.94f);
+    private static readonly Color BorderColor = new Color(0.20f, 0.78f, 0.72f, 0.95f);
     private static readonly Color RowBg = new Color(0.09f, 0.11f, 0.14f, 0.96f);
     private static readonly Color RowSel = new Color(0.10f, 0.28f, 0.26f, 0.98f);
     private static readonly Color Body = new Color(0.90f, 0.94f, 0.94f, 1f);
@@ -248,70 +249,13 @@ public static class Jukebox
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-            // ---- 音符按钮 ----
-            _btnGo = NewRect("MusicBtn", _root.transform, BtnSize, BtnSize);
-            var rt = (RectTransform)_btnGo.transform;
-            rt.anchorMin = new Vector2(0.5f, 1f);
-            rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot = new Vector2(0.5f, 1f);
-            rt.anchoredPosition = new Vector2(OffsetX, OffsetY);
+            // ★ 没有 GraphicRaycaster 的 Canvas 是"看得见、点不到"的：
+            //   uGUI 靠它在鼠标位置发射射线，缺了它 Button.onClick 永远不会触发。
+            //   0.25.0~0.25.2 的"完全不能交互"就是这个。
+            _root.AddComponent<GraphicRaycaster>();
 
-            var img = _btnGo.AddComponent<Image>();
-            img.color = PanelBg;
-            var btn = _btnGo.AddComponent<Button>();
-            btn.targetGraphic = img;
-            var colors = btn.colors;
-            colors.highlightedColor = new Color(0.16f, 0.22f, 0.26f, 1f);
-            colors.pressedColor = new Color(0.10f, 0.28f, 0.26f, 1f);
-            btn.colors = colors;
-            btn.onClick.AddListener(() => { SetOpen(!_open); });
-
-            _btnLabel = NewText("Icon", _btnGo.transform, "♪", 28f, Body);
-            Stretch(_btnLabel.rectTransform);
-
-            // ---- 弹出列表 ----
-            _listGo = NewRect("MusicList", _root.transform, RowW, 0f);
-            var lrt = (RectTransform)_listGo.transform;
-            lrt.anchorMin = new Vector2(0.5f, 1f);
-            lrt.anchorMax = new Vector2(0.5f, 1f);
-            lrt.pivot = new Vector2(0.5f, 1f);
-            lrt.anchoredPosition = new Vector2(OffsetX, OffsetY - BtnSize - 6f);
-
-            var lv = _listGo.AddComponent<VerticalLayoutGroup>();
-            lv.spacing = 3f;
-            lv.childControlHeight = false;
-            lv.childControlWidth = false;
-            lv.childForceExpandHeight = false;
-            lv.childForceExpandWidth = false;
-            lv.childAlignment = TextAnchor.UpperCenter;
-
-            var fitter = _listGo.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            for (int i = 0; i < _clips.Count; i++)
-            {
-                int idx = i;
-                var row = NewRect("Row" + i, _listGo.transform, RowW, RowH);
-                var rim = row.AddComponent<Image>();
-                rim.color = RowBg;
-                var rbtn = row.AddComponent<Button>();
-                rbtn.targetGraphic = rim;
-                rbtn.onClick.AddListener(() => Play(idx));
-
-                string label = _names[i];
-                if (label.Length > 28) label = label.Substring(0, 28);
-                var txt = NewText("T", row.transform, label, 15f, Body);
-                var trt = txt.rectTransform;
-                trt.anchorMin = Vector2.zero;
-                trt.anchorMax = Vector2.one;
-                trt.offsetMin = new Vector2(8f, 0f);
-                trt.offsetMax = new Vector2(-6f, 0f);
-                txt.alignment = TextAlignmentOptions.Left;
-                txt.enableWordWrapping = false;
-
-                _rows.Add(row);
-                _rowLabels.Add(txt);
-            }
+            BuildButton();
+            BuildList();
 
             SetOpen(false);
             _root.SetActive(false);
@@ -320,6 +264,108 @@ public static class Jukebox
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] 音乐按钮构建失败: {e.Message}");
             _root = null;
+        }
+    }
+
+    // ---- 音符按钮 ----
+    private static void BuildButton()
+    {
+        _btnGo = NewRect("MusicBtn", _root.transform, BtnSize, BtnSize);
+        var rt = (RectTransform)_btnGo.transform;
+        rt.anchorMin = new Vector2(0.5f, 1f);
+        rt.anchorMax = new Vector2(0.5f, 1f);
+        rt.pivot = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(OffsetX, OffsetY);
+
+        // 边框层：比底色大一圈，露出来的就是描边
+        var frame = _btnGo.AddComponent<Image>();
+        frame.color = BorderColor;
+        frame.raycastTarget = true;
+
+        var inner = NewRect("Bg", _btnGo.transform, BtnSize - 4f, BtnSize - 4f);
+        var irt = (RectTransform)inner.transform;
+        irt.anchorMin = new Vector2(0.5f, 0.5f);
+        irt.anchorMax = new Vector2(0.5f, 0.5f);
+        irt.anchoredPosition = Vector2.zero;
+        var bg = inner.AddComponent<Image>();
+        bg.color = PanelBg;
+        bg.raycastTarget = false;
+
+        var btn = _btnGo.AddComponent<Button>();
+        btn.targetGraphic = frame;
+        var colors = btn.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(0.55f, 0.75f, 0.72f, 1f);
+        colors.pressedColor = Accent;
+        btn.colors = colors;
+        btn.onClick.AddListener(() => { SetOpen(!_open); });
+
+        _btnLabel = NewText("Icon", inner.transform, "♪", 30f, Body);
+        Stretch(_btnLabel.rectTransform);
+    }
+
+    // ---- 弹出列表 ----
+    private static void BuildList()
+    {
+        _listGo = NewRect("MusicList", _root.transform, RowW + 8f, 0f);
+        var lrt = (RectTransform)_listGo.transform;
+        lrt.anchorMin = new Vector2(0.5f, 1f);
+        lrt.anchorMax = new Vector2(0.5f, 1f);
+        lrt.pivot = new Vector2(0.5f, 1f);
+        lrt.anchoredPosition = new Vector2(OffsetX, OffsetY - BtnSize - 8f);
+
+        // 底板（VerticalLayoutGroup 会叠在它上面）
+        var bgImg = _listGo.AddComponent<Image>();
+        bgImg.color = new Color(0.03f, 0.04f, 0.05f, 0.95f);
+        bgImg.raycastTarget = true;          // 吃掉点击，别透到游戏里
+
+        var outline = _listGo.AddComponent<Outline>();
+        outline.effectColor = new Color(BorderColor.r, BorderColor.g, BorderColor.b, 0.75f);
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        var lv = _listGo.AddComponent<VerticalLayoutGroup>();
+        lv.padding = new RectOffset(4, 4, 4, 4);
+        lv.spacing = 3f;
+        lv.childControlHeight = false;
+        lv.childControlWidth = false;
+        lv.childForceExpandHeight = false;
+        lv.childForceExpandWidth = false;
+        lv.childAlignment = TextAnchor.UpperCenter;
+
+        var fitter = _listGo.AddComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        for (int i = 0; i < _clips.Count; i++)
+        {
+            int idx = i;
+
+            var row = NewRect("Row" + i, _listGo.transform, RowW, RowH);
+            var rim = row.AddComponent<Image>();
+            rim.color = RowBg;
+            rim.raycastTarget = true;
+
+            var rbtn = row.AddComponent<Button>();
+            rbtn.targetGraphic = rim;
+            var rc = rbtn.colors;
+            rc.normalColor = Color.white;
+            rc.highlightedColor = new Color(0.6f, 0.8f, 0.78f, 1f);
+            rc.pressedColor = Accent;
+            rbtn.colors = rc;
+            rbtn.onClick.AddListener(() => Play(idx));
+
+            string label = _names[i];
+            if (label.Length > 30) label = label.Substring(0, 30);
+            var txt = NewText("T", row.transform, label, 15f, Body);
+            var trt = txt.rectTransform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(10f, 0f);
+            trt.offsetMax = new Vector2(-8f, 0f);
+            txt.alignment = TextAlignmentOptions.Left;
+            txt.enableWordWrapping = false;
+
+            _rows.Add(row);
+            _rowLabels.Add(txt);
         }
     }
 

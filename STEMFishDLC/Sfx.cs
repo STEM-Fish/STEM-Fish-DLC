@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using UnityEngine.Networking;
 using UnityEngine;
 
 namespace STEMFishDLC;
@@ -25,6 +26,8 @@ public static class Sfx
 
     private static AudioSource _src;
     private static AudioClip _reloadOut, _reloadIn;
+    private static AudioClip _reloadFull;      // 用户提供的 mp3 原声（换弹 + 拉栓整段）
+    private static bool _fullTried;
 
     public static void Init(Plugin plugin)
     {
@@ -38,8 +41,94 @@ public static class Sfx
         catch { }
     }
 
-    public static void PlayReloadOut() => Play(ref _reloadOut, "reload_out.wav", "reload_out");
-    public static void PlayReloadIn() => Play(ref _reloadIn, "reload_in.wav", "reload_in");
+    public static void PlayReloadOut()
+    {
+        // 优先用整段原声（换弹 + 拉栓），它自己就覆盖了整次换弹的时间线；
+        // 没有这个文件时才退回我们合成的那两段 wav。
+        if (PlayFull()) return;
+        Play(ref _reloadOut, "reload_out.wav", "reload_out");
+    }
+
+    public static void PlayReloadIn()
+    {
+        if (_reloadFull != null) return;        // 整段里已经有拉栓声，别叠
+        Play(ref _reloadIn, "reload_in.wav", "reload_in");
+    }
+
+    private static bool PlayFull()
+    {
+        if (!Enabled) return false;
+        try
+        {
+            if (!_fullTried)
+            {
+                _fullTried = true;
+                var dir = Dir();
+                if (dir != null)
+                {
+                    var p = Path.Combine(dir, "reload.mp3");
+                    _reloadFull = LoadMp3(p, "sfx_reload_full");
+                    if (_reloadFull != null)
+                        Plugin.Log.LogInfo($"[STEMFishDLC] 换弹原声已加载: reload.mp3（{_reloadFull.length:0.00}s / {_reloadFull.frequency}Hz）");
+                }
+            }
+            if (_reloadFull == null) return false;
+
+            EnsureSource();
+            if (_src == null) return false;
+            _src.PlayOneShot(_reloadFull, Mathf.Clamp01(Volume));
+            return true;
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] 播放原声失败: {e.Message}");
+            return false;
+        }
+    }
+
+    private static void EnsureSource()
+    {
+        if (_src != null) return;
+        var go = new GameObject("STEMFishDLC_Sfx");
+        UnityEngine.Object.DontDestroyOnLoad(go);
+        _src = go.AddComponent<AudioSource>();
+        _src.playOnAwake = false;
+        _src.spatialBlend = 0f;      // 2D
+        _src.loop = false;
+    }
+
+    // ---- mp3：交给 Unity 自己解码（工程里没有 ffmpeg，也不该为了一个音效引入） ----
+    private static AudioClip LoadMp3(string path, string name)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+            string url = "file:///" + path.Replace("\\", "/").Replace(" ", "%20");
+
+            var req = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG);
+            req.SendWebRequest();
+
+            // 同步等一小会儿：48KB 的 mp3 解码只要几十毫秒，且只发生一次
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (!req.isDone && sw.ElapsedMilliseconds < 4000) { }
+
+            if (!req.isDone) { req.Abort(); return null; }
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Plugin.Log.LogWarning($"[STEMFishDLC] mp3 加载失败: {req.error}");
+                return null;
+            }
+
+            var clip = DownloadHandlerAudioClip.GetContent(req);
+            if (clip != null) clip.name = name;
+            return clip;
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"[STEMFishDLC] mp3 解析失败: {e.Message}");
+            return null;
+        }
+    }
 
     private static void Play(ref AudioClip clip, string file, string name)
     {
@@ -51,15 +140,8 @@ public static class Sfx
             if (clip == null) clip = LoadWav(file, "sfx_" + name);
             if (clip == null) return;
 
-            if (_src == null)
-            {
-                var go = new GameObject("STEMFishDLC_Sfx");
-                UnityEngine.Object.DontDestroyOnLoad(go);
-                _src = go.AddComponent<AudioSource>();
-                _src.playOnAwake = false;
-                _src.spatialBlend = 0f;      // 2D
-                _src.loop = false;
-            }
+            EnsureSource();
+            if (_src == null) return;
             _src.PlayOneShot(clip, Mathf.Clamp01(Volume));
         }
         catch (Exception e)
