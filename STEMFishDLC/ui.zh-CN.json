@@ -217,7 +217,7 @@
     "jammer.wronglayer": "没有反应。它只对一层有效，而这里不是那一层。",
     "jammer.cut.toast": "芯片拆掉了。从现在起，没人给你计时了。",
     "jammer.keep.toast": "你把屏蔽器塞回兜里。它只在这一层有用。",
-    "hud.reload": "换弹 {0}s",
+    "hud.reload": "换弹 {0:0.0}s",
     "hud.nomag": "无弹匣",
     "hud.racked": "枪机开",
     "hud.safe": "保险",

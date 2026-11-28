@@ -181,6 +181,8 @@ public static class FishVoice
 
     // 原版取台词后：完全替换模式下只用我们的
     // ⚠ 参数名必须与游戏方法一致：Locale.GetCharacter(string str, int chr)
+    private static readonly HashSet<string> _missLogged = new HashSet<string>(StringComparer.Ordinal);
+
     private static void GetCharacter_Postfix(string str, int chr, ref List<string> __result)
     {
         try
@@ -198,6 +200,8 @@ public static class FishVoice
                 //   对空列表会抛 ArgumentOutOfRangeException。剧情过场（比如第 10 层货物植入
                 //   的 Body.EmbedCargo → "cargoimpale"）就在这个调用里，抛出去会把协程打断，
                 //   协程末尾的 body.forceNoMovement = false 永远执行不到 → 人物永久不能动。
+                if (!hasMine && !string.IsNullOrEmpty(str) && _missLogged.Add(str))
+                    Plugin.Log.LogInfo($"[STEMFishDLC] 台词情境「{str}」没有 SF-07 版本，回退原版（只提示一次）");
                 __result = hasMine ? new List<string>(mine) : __result;
                 return;
             }
@@ -397,6 +401,11 @@ public static class FishVoice
     public static void SayLine(string text)
     {
         if (!ModState.Enabled) return;
+
+        // ★ 面板「自言自语」关掉后，即时台词也要停。
+        //   以前只有定时吐槽看这个开关，捡档案 / 开箱子 / 换弹这些"即时"台词照说不误，
+        //   表现就是"开关关了但还在自言自语"。
+        if (!Enabled) return;
 
         // ★ 所有"即时台词"都是 SF-07 自己的独白。捡到档案 / 开弹药箱 / 开局配给 /
         //   杀同类惩罚 …… 这些模块在选原版角色时**照样会调用** SayLine，

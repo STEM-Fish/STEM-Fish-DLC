@@ -217,7 +217,7 @@
     "jammer.wronglayer": "Nothing happens. It only works on one layer, and this is not that layer.",
     "jammer.cut.toast": "The chip is out. No one is timing you anymore.",
     "jammer.keep.toast": "You put the jammer back in your pocket. It only works on this layer.",
-    "hud.reload": "RELOAD {0}s",
+    "hud.reload": "RELOAD {0:0.0}s",
     "hud.nomag": "NO MAG",
     "hud.racked": "CHAMBER OPEN",
     "hud.safe": "SAFE",

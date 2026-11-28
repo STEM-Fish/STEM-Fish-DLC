@@ -47,15 +47,15 @@ public static class TailFlow
     public static bool Enabled = true;
     public static int Segments = 18;
     public static float Width = 1.7f;
-    public static float WindAmp = 0.012f;
+    public static float WindAmp = 0.005f;
     public static float SpeedDisturb = 0.005f;
     public static float WindFreq = 1.2f;
     public static float Gravity = 1.0f;
-    public static float Damping = 0.40f;
+    public static float Damping = 0.55f;
     public static float SpeedDamping = 0.05f;
     public static float Stiffness = 1f;
-    public static float Smoothness = 0.30f;
-    public static float MaxBendDeg = 30f;
+    public static float Smoothness = 0.45f;
+    public static float MaxBendDeg = 12f;
     public static float AnchorFollow = 1f;
     public static float MaxStep = 0.40f;
     public static bool FrontGuard = true;
@@ -76,22 +76,22 @@ public static class TailFlow
                 "尾巴分几段（越多越柔顺；12~24 平滑，太多会吃性能）").Value, 4, 32);
             Width = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowWidth", 1.7f,
                 "尾巴粗细倍率（1 = 贴图原宽；贴图本身只有 5~10 像素高，1.6~2.0 才饱满）").Value, 0.3f, 3f);
-            WindAmp = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAmp", 0.35f,
-                "风的幅度（0 = 只有惯性和重力，0.6 已经很飘）").Value, 0f, 2f);
+            WindAmp = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAmpV2", 0.005f,
+                "风的幅度（很小就够；尾巴主要靠重力自然下垂，风只负责一点点扰动）").Value, 0f, 0.05f);
             WindFreq = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowFreq", 1.6f,
                 "风的频率（越大抖得越快）").Value, 0.2f, 6f);
             Gravity = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowGravity", 1f,
                 "向下的重力（越大尾梢垂得越低）").Value, 0f, 20f);
-            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDamping", 0.40f,
-                "速度阻尼（越大越黏、停得越快）").Value, 0f, 0.95f);
+            Damping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowDampingV2", 0.55f,
+                "速度阻尼（越大越黏、停得越快；0.55 摆动一两下就停）").Value, 0f, 0.9f);
             SpeedDamping = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSpeedDamp", 0.05f,
                 "速度越快阻尼越小（原版 0.05）").Value, 0f, 0.3f);
             Stiffness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowStiffness", 1f,
                 "段长约束强度（1 = 硬约束，越小越软）").Value, 0.1f, 1f);
-            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmooth", 0.30f,
-                "骨链平滑（越大越顺滑，但滞后也越大，会显得迟钝）").Value, 0f, 0.95f);
-            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBend", 30f,
-                "相邻两段的最大夹角（度）—— 段数越多单段弯得越少，30 左右刚好").Value, 5f, 80f);
+            Smoothness = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowSmoothV2", 0.45f,
+                "骨链平滑（越大越顺滑，但滞后也越大；0.45 手感最自然）").Value, 0f, 0.7f);
+            MaxBendDeg = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxBendV2", 12f,
+                "相邻两段的最大夹角（度）—— 越小越僵硬，越不会甩成 S 形").Value, 3f, 30f);
             AnchorFollow = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowAnchor", 1f,
                 "第一骨点跟随根部的强度（1 = 完全跟随）").Value, 0.05f, 1f);
             MaxStep = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "TailFlowMaxStep", 0.40f,
@@ -426,7 +426,7 @@ public class TailRig : MonoBehaviour
                            $"有效长 {axisLenPx}px ppu={ppu:0.##} 世界总长={localLen * scale:0.##}u " +
                            $"段长={_segLen:0.###}u 中段宽≈{_segHalf[seg / 2] * 2f:0.##}u " +
                            $"宽度×{TailFlow.Width:0.##} 细分×{SubDiv}(共{cols}列) 缩放={scale:0.##} " +
-                           $"位移上限={Mathf.Min(TailFlow.MaxStep, _segLen * 0.9f):0.###}u/子步");
+                           $"位移上限={Mathf.Min(TailFlow.MaxStep, _segLen * 0.6f):0.###}u/子步");
     }
 
     /// <summary>只量"有内容"的列数（不采样轮廓），用来决定分几段</summary>
@@ -634,7 +634,7 @@ public class TailRig : MonoBehaviour
         //   约束再怎么迭代也拉不回来 → 段长忽长忽短、看起来一顿一顿还断节。
         //   0.9 段长是个平衡点：既不会一步跨过一整段（约束追不上），
         //   又能保证每帧的位移预算（segLen × 0.9 × 子步数）跟得上角色速度。
-        float maxStep = Mathf.Min(TailFlow.MaxStep, _segLen * 0.9f);
+        float maxStep = Mathf.Min(TailFlow.MaxStep, _segLen * 0.6f);
         maxStep = Mathf.Max(maxStep, 0.002f);
         float smooth = Mathf.Clamp(TailFlow.Smoothness, 0f, 0.99f);
         float anchorFollow = Mathf.Clamp01(TailFlow.AnchorFollow);
