@@ -6,14 +6,20 @@ namespace STEMFishDLC;
 // ============================================================================
 //  LaserSight - MDRZ9 的红色激光束（纯视觉，暂时不接供电/命中判定）
 //  ---------------------------------------------------------------------------
-//  反汇编确认：`GunScript.barrel` 是枪口 Transform（开火时从这里出射线），
-//  它的 `right` 在世界空间就是枪管朝向 —— 身体用 localScale.x = -1 镜像时
-//  Unity 会自动翻转，所以不用自己判断 isRight。
+//  反汇编确认：`GunScript.barrel` 是枪口 Transform（开火时从这里出射线）。
 //
-//  线用 LineRenderer 画，材质 Sprites/Default（不受 2D 光照影响，暗层里也是亮的），
-//  sortingOrder 压在所有肢体之上。只有主手是 MDRZ9 时才显示。
+//  方向：`barrel.right` 只吃 rotation、**不吃 scale**，而 `Body.SwitchDir` 用
+//  `localScale.x = -1` 表示朝向 —— 所以镜像时枪管视觉朝左、right 却仍然指 +X。
+//  要乘 `Mathf.Sign(barrel.lossyScale.x)` 把方向掰回来。
 //
-//  以后接机制时：把 `EndPoint` 暴露出去，命中判定直接用同一条射线就行。
+//  ★ 为什么不用 LineRenderer：
+//    URP 2D 下 `Shader.Find("Sprites/Default")` 是内置管线 shader，LineRenderer
+//    用它要么渲染成粉色、要么直接不可见（0.25.0/0.25.1 就是这样，肉眼完全看不到）。
+//    改成最朴素也最可靠的办法：一张 **1x1 白色 Sprite**（ppu = 1），
+//    SpriteRenderer 把 localScale.x 拉到线长、y 拉到粗细，旋转对准方向 ——
+//    和角色身上的其它 sprite 走完全同一条渲染路径，不存在"看不见"的可能。
+//
+//  两层：核心（细、亮）+ 光晕（3 倍宽、淡）—— 亮背景上也有轮廓。
 // ============================================================================
 
 public static class LaserSight
@@ -21,13 +27,13 @@ public static class LaserSight
     public static bool Enabled = true;
     public static float Range = 40f;
     public static float Width = 0.040f;
-    public static Color BeamColor = new Color(1f, 0.16f, 0.12f, 0.55f);
+    public static Color BeamColor = new Color(1f, 0.16f, 0.12f, 0.90f);
 
-    private static LineRenderer _line;
-    private static LineRenderer _glow;
     private static GameObject _go;
-    private static Material _mat;
+    private static SpriteRenderer _core, _glow;
+    private static Sprite _beam;
     private static GunScript _gun;
+    private static bool _built;
 
     public static Vector2 EndPoint { get; private set; }
     public static bool Active { get; private set; }
@@ -42,7 +48,7 @@ public static class LaserSight
                 "激光长度上限（世界单位）").Value, 3f, 120f);
             Width = Mathf.Clamp(plugin.Config.Bind("Cosmetic", "LaserSightWidthV2", 0.040f,
                 "激光粗细（世界单位）").Value, 0.006f, 0.2f);
-            BeamColor.a = Mathf.Clamp01(plugin.Config.Bind("Cosmetic", "LaserSightAlpha", 0.55f,
+            BeamColor.a = Mathf.Clamp01(plugin.Config.Bind("Cosmetic", "LaserSightAlpha", 0.90f,
                 "激光不透明度（0~1）").Value);
         }
         catch { }
@@ -60,20 +66,16 @@ public static class LaserSight
             if (body == null) { Hide(); return; }
 
             var item = body.GetItem(0);
-            if (item == null || item.id != "mdrz9") { Hide(); return; }
+            if (item == null || (item.id != "mdrz9" && item.id != "mdr")) { Hide(); return; }   // mdr = 旧存档里的别名
 
             var gun = item.GetComponent<GunScript>();
             if (gun == null || gun.barrel == null) { Hide(); return; }
 
-            EnsureLine();
-            if (_line == null) return;
+            Ensure();
 
             Vector2 origin = gun.barrel.position;
             Vector2 dir = gun.barrel.right;
 
-            // ★ Transform.right 只吃 rotation，**不吃 scale** —— 身体用
-            //   localScale.x = -1 镜像时它仍然指向 +X，激光就从枪托那头射出去了。
-            //   用 lossyScale 的符号把方向掰回来。
             float sgn = Mathf.Sign(gun.barrel.lossyScale.x);
             if (Mathf.Approximately(sgn, 0f)) sgn = 1f;
             dir *= sgn;
@@ -81,7 +83,7 @@ public static class LaserSight
             if (dir.sqrMagnitude < 1e-4f) { Hide(); return; }
             dir.Normalize();
 
-            origin += dir * 0.08f;
+            origin += dir * 0.06f;
 
             Vector2 end = origin + dir * Range;
             try
@@ -94,35 +96,29 @@ public static class LaserSight
             EndPoint = end;
             Active = true;
 
+            float len = Vector2.Distance(origin, end);
+            if (len < 0.01f) { Hide(); return; }
+
+            Vector2 mid = (origin + end) * 0.5f;
+            float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+
             _go.SetActive(true);
+            _go.transform.position = new Vector3(mid.x, mid.y, 0f);
+            _go.transform.rotation = Quaternion.Euler(0f, 0f, ang);
 
-            var a = new Vector3(origin.x, origin.y, 0f);
-            var b = new Vector3(end.x, end.y, 0f);
+            _core.transform.localScale = new Vector3(len, Width, 1f);
+            _core.color = BeamColor;
 
-            // 核心线
-            _line.SetPosition(0, a);
-            _line.SetPosition(1, b);
-            _line.startColor = BeamColor;
-            _line.endColor = new Color(BeamColor.r, BeamColor.g, BeamColor.b, BeamColor.a * 0.35f);
-            _line.startWidth = Width;
-            _line.endWidth = Width * 0.7f;
-
-            // 外层光晕：宽三倍、淡一档，让激光在亮背景上也能看见
             if (_glow != null)
             {
-                _glow.SetPosition(0, a);
-                _glow.SetPosition(1, b);
-                var gc = new Color(BeamColor.r, BeamColor.g * 0.5f, BeamColor.b * 0.4f, BeamColor.a * 0.30f);
-                _glow.startColor = gc;
-                _glow.endColor = new Color(gc.r, gc.g, gc.b, gc.a * 0.2f);
-                _glow.startWidth = Width * 3.2f;
-                _glow.endWidth = Width * 1.8f;
+                _glow.transform.localScale = new Vector3(len, Width * 3.4f, 1f);
+                _glow.color = new Color(BeamColor.r, BeamColor.g * 0.45f, BeamColor.b * 0.35f, BeamColor.a * 0.28f);
             }
 
             if (_gun != gun)
             {
                 _gun = gun;
-                Plugin.Log.LogInfo("[STEMFishDLC] 激光束已挂到 MDRZ9");
+                Plugin.Log.LogInfo($"[STEMFishDLC] 激光束已挂到 MDRZ9（宽 {Width:0.###}u，{(_core.sharedMaterial != null ? _core.sharedMaterial.shader.name : "默认材质")}）");
             }
         }
         catch (Exception e)
@@ -132,52 +128,73 @@ public static class LaserSight
         }
     }
 
-    private static void EnsureLine()
+    // ======================================================================
+    //  构建：1x1 白 sprite + SpriteRenderer
+    // ======================================================================
+    private static void Ensure()
     {
-        if (_line != null) return;
+        if (_built) return;
+        _built = true;
         try
         {
+            var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            tex.SetPixel(0, 0, Color.white);
+            tex.Apply();
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.name = "LaserPixel";
+
+            _beam = Sprite.Create(tex, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f,
+                                  0, SpriteMeshType.FullRect);
+            _beam.name = "LaserBeam";
+
             _go = new GameObject("STEMFishDLC_Laser");
             UnityEngine.Object.DontDestroyOnLoad(_go);
 
-            _line = _go.AddComponent<LineRenderer>();
-            _line.positionCount = 2;
-            _line.useWorldSpace = true;
-            _line.numCapVertices = 2;
-            _line.alignment = LineAlignment.View;
-            _line.textureMode = LineTextureMode.Stretch;
+            var mat = BeamMaterial();
 
-            var sh = Shader.Find("Sprites/Default");
-            _mat = sh != null ? new Material(sh) : null;
-            if (_mat != null) _line.material = _mat;
-
-            _line.sortingOrder = 26001;
-            _line.receiveShadows = false;
-            _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            _line.startColor = BeamColor;
-            _line.endColor = BeamColor;
-            _line.startWidth = Width;
-            _line.endWidth = Width;
-
-            // 光晕（同一条 GameObject 上加第二个 LineRenderer，排序低一层）
-            _glow = _go.AddComponent<LineRenderer>();
-            _glow.positionCount = 2;
-            _glow.useWorldSpace = true;
-            _glow.numCapVertices = 2;
-            _glow.alignment = LineAlignment.View;
-            if (_mat != null) _glow.material = _mat;
-            _glow.sortingOrder = 26000;
-            _glow.receiveShadows = false;
-            _glow.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _glow = MakeLayer("Glow", 25998, mat);
+            _core = MakeLayer("Core", 25999, mat);
 
             _go.SetActive(false);
         }
         catch (Exception e)
         {
             Plugin.Log.LogWarning($"[STEMFishDLC] 激光束创建失败: {e.Message}");
-            _line = null;
-            _glow = null;
+            _built = false;
         }
+    }
+
+    private static SpriteRenderer MakeLayer(string name, int order, Material mat)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(_go.transform, false);
+        go.transform.localPosition = Vector3.zero;
+
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = _beam;
+        sr.drawMode = SpriteDrawMode.Simple;
+        sr.sortingOrder = order;
+        sr.color = BeamColor;
+        if (mat != null) sr.sharedMaterial = mat;
+        return sr;
+    }
+
+    private static Material BeamMaterial()
+    {
+        string[] names =
+        {
+            "Universal Render Pipeline/2D/Sprite-Unlit-Default",
+            "Sprites/Default",
+            "Universal Render Pipeline/Unlit",
+        };
+        for (int i = 0; i < names.Length; i++)
+        {
+            var sh = Shader.Find(names[i]);
+            if (sh == null) continue;
+            try { return new Material(sh); } catch { }
+        }
+        return null;
     }
 
     private static void Hide()
