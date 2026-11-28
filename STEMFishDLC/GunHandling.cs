@@ -126,6 +126,7 @@ public static class GunHandling
             _reloadEnd = Time.unscaledTime + ReloadDuration;
 
             EjectOldMagazine(body, gun);            // 卸旧弹匣（收进背包 / 落地）
+            Sfx.PlayReloadOut();                    // 卸匣：闷响 + 金属轻碰
 
             if (UnityEngine.Random.value < 0.45f)
                 FishVoice.SayLine(FishVoice.RandomLine("reload", ReloadFallback));
@@ -162,6 +163,8 @@ public static class GunHandling
 
             UnityEngine.Object.Destroy(_newMag.gameObject);     // 消耗掉这个弹匣
             _newMag = null;
+
+            Sfx.PlayReloadIn();                     // 插匣 + 拉栓
 
             // 膛内没弹（弹壳/空）就完整上一次膛
             if (_gun.roundInChamber != 0) RackCycle(_gun);

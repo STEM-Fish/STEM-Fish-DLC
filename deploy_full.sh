@@ -65,6 +65,11 @@ for f in "$ROOT"/STEMFishDLC/*.zh-CN.json "$ROOT"/STEMFishDLC/*.en-US.json \
   [ -f "$f" ] && cp "$f" "$PLUGIN/"
 done
 
+if [ -d "$ROOT/STEMFishDLC/sfx" ]; then
+  mkdir -p "$PLUGIN/sfx"
+  cp "$ROOT"/STEMFishDLC/sfx/*.wav "$PLUGIN/sfx/" 2>/dev/null || true
+fi
+
 if [ -d "$ROOT/STEMFishDLC/lore_img" ]; then
   mkdir -p "$PLUGIN/lore_img"
   cp "$ROOT"/STEMFishDLC/lore_img/*.png "$PLUGIN/lore_img/" 2>/dev/null || true

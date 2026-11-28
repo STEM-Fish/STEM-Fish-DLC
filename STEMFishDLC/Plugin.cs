@@ -19,7 +19,7 @@ namespace STEMFishDLC;
 //    一旦把 Update 写在这里，"游戏内所有功能"就跟着一起死。
 // ============================================================================
 
-[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.24.6")]
+[BepInPlugin("com.stemfish.dlc", "STEM Fish DLC", "0.25.0")]
 [BepInProcess("CasualtiesUnknown.exe")]
 public class Plugin : BaseUnityPlugin
 {
@@ -37,7 +37,7 @@ public class Plugin : BaseUnityPlugin
         Log = FishLog.Source;
         try { Cfg = Config; } catch { }
 
-        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.24.6 =====");
+        Log.LogInfo("[STEMFishDLC] ===== 加载 v0.25.0 =====");
 
         // ① 先装引擎级驱动器（最优先：它不依赖本对象，销毁也能活）
         EngineTick.Install();
@@ -99,6 +99,9 @@ public class Plugin : BaseUnityPlugin
         WeaponHud.Init(this);       // 右下角武器状态 HUD
         HealthPanel.Init(this);     // 健康面板：STEM-Fish 档案 + 天蓝配色
         HealthDoll.Init(this);      // 右上角人体图（按部位显示受伤）
+        Jukebox.Init(this);         // 急速下坠：顶部音乐按钮（原版曲库）
+        Sfx.Init(this);             // 换弹音效（自带 wav）
+        LaserSight.Init(this);      // MDRZ9 红色激光束（纯视觉）
         GunFx.Init(this);           // 射击打击感（枪口闪光 + 命中粒子）
         FishSkin.Init(this);        // 内置皮肤替换（不依赖 SkinSyncMod，隔离模式下也保留外观）
         TailFlow.Init(this);        // 尾巴分段飘动（在皮肤替换之后）
@@ -178,6 +181,8 @@ public class Plugin : BaseUnityPlugin
         Safe(Hearing.Tick);             // 耳塞：检测佩戴 + 平滑过渡
         Safe(HealthPanel.Tick);         // 健康面板改名/改色
         Safe(HealthDoll.Tick);          // 右上角人体图
+        Safe(Jukebox.Update);           // 顶部音乐按钮
+        Safe(LaserSight.Update);        // MDRZ9 激光束
         Safe(SpikeCrawler.Tick);        // 尖刺爬行者：维持距离 + 射尖刺
         Safe(LuckyBlock.Tick);          // 幸运方块：右键/打碎抽效果
         Safe(LaserDrill.Tick);          // 急速下坠：激光钻电量兜底

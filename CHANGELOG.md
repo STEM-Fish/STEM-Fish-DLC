@@ -2,6 +2,27 @@
 
 版本号即 `[BepInPlugin]` 里的字符串，游戏日志搜索 `加载 v` 可以确认当前跑的哪一版。
 
+## 0.25.0 — 2026-11-28
+
+- **急速下坠：顶部音乐按钮**。屏幕顶部中央一个音符按钮（`♪`），点开是原版曲库的曲目列表，
+  再点一次收起。反汇编确认原版有 `MusicManager.main`（静态单例）+ `biomeMusic`（按层分组的
+  `SongList[]`）+ `PlaySong(clip)`，所以直接把 clip 交给它就行 —— 音量、混音器、
+  渐入渐出全部沿用原版设置，不需要自己造 AudioSource。
+  - 四首目标曲目按名字模糊匹配（PATHWAY / CHASE / RUN FOR / ASCENT），
+    匹配不到就退回完整曲库，按钮始终可用
+  - 同一首点第二次 = 停止
+  - 配置：`[HUD] Jukebox` / `JukeboxX` / `JukeboxY`
+- **换弹音效**。两段自合成的 wav（`sfx/reload_out.wav` 卸弹匣、`sfx/reload_in.wav`
+  插弹匣 + 拉栓），44.1kHz / 16-bit：带通噪声做出金属咔哒，再叠一点低频闷响。
+  `GunHandling.StartReload` 播卸匣、`TickReload` 收尾播插匣。
+  配置：`[Audio] ReloadSfx` / `ReloadSfxVolume`（默认 0.65）
+- **MDRZ9 红色激光束（纯视觉）**。`GunScript.barrel` 是枪口 Transform，它的 `right`
+  就是枪管朝向；从枪口沿这个方向 Raycast 到 `Ground`，用 LineRenderer 画一条红色渐变线，
+  材质 `Sprites/Default`（不吃 2D 光照，暗层里也是亮的）。
+  只有主手是 MDRZ9 时显示。配置：`[Cosmetic] LaserSight` / `LaserSightRange` /
+  `LaserSightWidth` / `LaserSightAlpha`。
+  `LaserSight.EndPoint` 已经暴露出来，后续接供电/命中判定直接用这条射线。
+
 ## 0.24.6 — 2026-11-28
 
 - **尾巴幅度收敛到"下垂为主、轻摆为辅"**。之前允许它甩成 S 形，看起来像有生命的蛇。
